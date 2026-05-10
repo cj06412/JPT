@@ -16,9 +16,7 @@
 
 **参考实现：** [ryanstephen/lil-agents](https://github.com/ryanstephen/lil-agents) 的 [ClaudeSession.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/ClaudeSession.swift)、[AgentSession.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/AgentSession.swift)、[ShellEnvironment.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/ShellEnvironment.swift)。
 
-**开发平台：Windows 10 / 11**。所有透明 AOT 窗口、任务栏几何、`claude.cmd` 路径解析都在 Windows 原生测试。终端用 PowerShell 或 Windows Terminal。macOS / Linux 支持留到 v2。
-
-> **注**：Tasks 1 & 2 的代码（package.json / tsconfig / vite.config / electron entries）是跨平台的，已经在 macOS 上写好提交了（commits `51e28f4`、`d189793`）。在 Windows 上 `git pull` + `npm install` 后 `npm run dev` 应该直接能跑出"800×600 红色矩形"。如果 OK，Tasks 1 & 2 的 Windows 验收同时完成，从 Task 3 接着做。
+**开发平台：Windows 10 / 11**。所有 11 个 task 都在 Windows 上原生执行 + 验收。终端用 PowerShell 或 Windows Terminal。macOS / Linux 支持留到 v2。
 
 ---
 
