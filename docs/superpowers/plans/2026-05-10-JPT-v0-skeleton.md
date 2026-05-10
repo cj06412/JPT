@@ -11,12 +11,14 @@
 - Vite 5 + `vite-plugin-electron` 0.28（前端 / 主进程构建）
 - React 19 + TypeScript 5 strict mode
 - Vitest 1（单元测试，纯逻辑）
-- Node.js 20+（开发机；Electron 33 内嵌 Node 20）
-- `claude` CLI（Anthropic Claude Code，已装在开发机）
+- Node.js 20+（Windows installer 默认 LTS）
+- `claude` CLI（Anthropic Claude Code，Windows 上安装：`npm i -g @anthropic-ai/claude-code` 或 `curl -fsSL https://claude.ai/install.sh | sh` 的 Windows 等价 PowerShell 命令）
 
 **参考实现：** [ryanstephen/lil-agents](https://github.com/ryanstephen/lil-agents) 的 [ClaudeSession.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/ClaudeSession.swift)、[AgentSession.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/AgentSession.swift)、[ShellEnvironment.swift](https://github.com/ryanstephen/lil-agents/blob/main/LilAgents/ShellEnvironment.swift)。
 
-**开发平台说明：** 开发在 macOS 上做，跑在 macOS 上验收（macOS 上也有透明 AOT 窗口 + claude CLI），Windows 特定的部分（任务栏几何 / Win32 API）留到 v1。本计划目标是在开发机能 `npm run dev` 跑起来端到端通。
+**开发平台：Windows 10 / 11**。所有透明 AOT 窗口、任务栏几何、`claude.cmd` 路径解析都在 Windows 原生测试。终端用 PowerShell 或 Windows Terminal。macOS / Linux 支持留到 v2。
+
+> **注**：Tasks 1 & 2 的代码（package.json / tsconfig / vite.config / electron entries）是跨平台的，已经在 macOS 上写好提交了（commits `51e28f4`、`d189793`）。在 Windows 上 `git pull` + `npm install` 后 `npm run dev` 应该直接能跑出"800×600 红色矩形"。如果 OK，Tasks 1 & 2 的 Windows 验收同时完成，从 Task 3 接着做。
 
 ---
 
@@ -65,6 +67,28 @@ JPT/
 
 ---
 
+## Windows 踩坑预案（开始前过一遍，避免后面 debug 没头绪）
+
+| 坑 | 出在哪 | 预防 |
+|---|---|---|
+| **`spawn` `.cmd` shim 失败 / 挂死** | Task 9：`claude` 通过 npm 全局装时 `%APPDATA%\npm\claude.cmd` 是个 batch 脚本；Node `spawn` 默认拒绝直接运行 `.cmd` | Task 9 已为 `.cmd`/`.bat` 加 `shell: true` + `windowsVerbatimArguments` |
+| **`setIgnoreMouseEvents` 的 `forward: true`** | Task 6+ 像素级 click-through | `forward: true` **只在 Windows / Linux 有用**，macOS 上是 no-op；Windows 上 [issue #23042](https://github.com/electron/electron/issues/23042) 提到版本 6.1.9+ 行为变过，需要测试 |
+| **任务栏自动隐藏 / 居中（Win11）** | Task 3, 5：任务栏几何 | `screen.getPrimaryDisplay().workArea` 已经把任务栏占的高度从 workArea 里减掉了，所以"贴底"逻辑在 Win11 上和老 Windows 一致；但任务栏 autohide 时 workArea = full screen，角色会贴到屏幕底；这是可接受的（v1 再做 SHAppBarMessage 检测） |
+| **`always-on-top` 'screen-saver' level** | Task 3：透明角色窗 | Windows 上 'screen-saver' 是 ZBID_DESKTOP；普通应用不会盖，但全屏游戏 / 全屏 PPT 会盖；接受 |
+| **DPI 缩放（100% / 125% / 150% / 200%）** | Task 3, 5：窗口位置和大小 | Electron 默认 per-monitor DPI aware；测试时四档都过一遍肉眼看 |
+| **路径分隔符** | 所有用到路径的地方 | 全程用 `path.join()` / `path.resolve()`，**不要硬编码 `/` 或 `\\`** |
+| **HiDPI 鼠标坐标** | Task 5+ | Electron `screen.getCursorScreenPoint()` 返回 DIP 坐标；`win.setPosition(x, y)` 也是 DIP；不需要乘 scale |
+| **claude.cmd 路径不在 PATH** | Task 8 | npm 全局 bin 目录有时不在 SYSTEM PATH（只在 USER PATH）；`process.env.PATH` 在 GUI app 里可能拿不到完整 PATH；Task 8 fallback 列表已覆盖常见位置 |
+| **首次 `npm install electron` 卡** | Task 1 | `.npmrc` 已配 `electron_mirror=https://npmmirror.com/mirrors/electron/`；如果你网络好可以删掉这一行直接走 GitHub Releases |
+
+**SSH key for GitHub on Windows：** 如果 Windows 机器还没生成 SSH key，先：
+```powershell
+ssh-keygen -t ed25519 -C "your_email@example.com"
+# 把 ~/.ssh/id_ed25519.pub 内容贴到 https://github.com/settings/keys
+```
+
+---
+
 ## Task 1: Project scaffold
 
 **Files:**
@@ -75,9 +99,7 @@ JPT/
 
 - [ ] **Step 1.1: Create package.json**
 
-```bash
-cd /Users/caojun/bigkingfile/JPT
-```
+All commands assume current directory is JPT repo root (e.g. `C:\Users\<you>\Code\JPT`). On Windows use PowerShell or Windows Terminal.
 
 Create `package.json`:
 
@@ -176,7 +198,7 @@ Create `tsconfig.node.json`:
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm install
+npm install
 ```
 
 Expected: completes without errors, creates `node_modules/` and `package-lock.json`. May take 30s-2min for first Electron download.
@@ -184,8 +206,8 @@ Expected: completes without errors, creates `node_modules/` and `package-lock.js
 - [ ] **Step 1.6: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add package.json package-lock.json tsconfig.json tsconfig.node.json .npmrc
-git -C /Users/caojun/bigkingfile/JPT commit -m "chore: scaffold electron + react + ts project"
+git add package.json package-lock.json tsconfig.json tsconfig.node.json .npmrc
+git commit -m "chore: scaffold electron + react + ts project"
 ```
 
 ---
@@ -447,16 +469,16 @@ export function App() {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm run dev
+npm run dev
 ```
 
-Expected: A 800×600 window opens showing a red square in the top-left corner. Close it (Cmd+Q on macOS / Alt+F4 on Windows) to end the test.
+Expected: A 800×600 window opens showing a red square in the top-left corner. Close it (Alt+F4 on the window, or Ctrl+C in the terminal where `npm run dev` is running) to end the test.
 
 - [ ] **Step 2.8: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add vite.config.ts vitest.config.ts electron src
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat: vite + electron bootstrap with placeholder character window"
+git add vite.config.ts vitest.config.ts electron src
+git commit -m "feat: vite + electron bootstrap with placeholder character window"
 ```
 
 ---
@@ -586,20 +608,20 @@ app.on('before-quit', () => {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm run dev
+npm run dev
 ```
 
 Expected:
 - A small (96×128) red square appears at the bottom-left of the primary display, **above** the dock/taskbar
 - The window has no title bar or frame
 - The dialog window is invisible (hidden)
-- Press Cmd+Q (macOS) / Ctrl+C in terminal to quit
+- Press Alt+F4 on the window, or Ctrl+C in the terminal, to quit
 
 - [ ] **Step 3.4: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/main.ts electron/window-manager.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat: two-window architecture (transparent AOT character + hidden dialog)"
+git add electron/main.ts electron/window-manager.ts
+git commit -m "feat: two-window architecture (transparent AOT character + hidden dialog)"
 ```
 
 ---
@@ -677,7 +699,7 @@ describe('state-machine', () => {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- state-machine
+npm test -- state-machine
 ```
 
 Expected: tests fail because `src/character/state-machine.ts` doesn't exist yet.
@@ -757,7 +779,7 @@ function randomPauseMs(): number {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- state-machine
+npm test -- state-machine
 ```
 
 Expected: all 5 tests pass.
@@ -765,8 +787,8 @@ Expected: all 5 tests pass.
 - [ ] **Step 4.5: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add src/character/state-machine.ts tests/state-machine.test.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat(character): walking state machine (idle/walk + bounce off bounds)"
+git add src/character/state-machine.ts tests/state-machine.test.ts
+git commit -m "feat(character): walking state machine (idle/walk + bounce off bounds)"
 ```
 
 ---
@@ -934,7 +956,7 @@ export function App() {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm run dev
+npm run dev
 ```
 
 Expected: red square slides slowly along the bottom of the primary display, hits the right edge, pauses, reverses, walks back. Pause times are random 0.5–14s. Quit with Ctrl+C in terminal.
@@ -942,8 +964,8 @@ Expected: red square slides slowly along the bottom of the primary display, hits
 - [ ] **Step 5.6: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/ipc.ts electron/main.ts src/character/App.tsx src/shared/preload-types.d.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat(character): walking animation driven by raf tick loop"
+git add electron/ipc.ts electron/main.ts src/character/App.tsx src/shared/preload-types.d.ts
+git commit -m "feat(character): walking animation driven by raf tick loop"
 ```
 
 ---
@@ -1118,7 +1140,7 @@ export function App() {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm run dev
+npm run dev
 ```
 
 Expected:
@@ -1130,8 +1152,8 @@ Expected:
 - [ ] **Step 6.6: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/window-manager.ts electron/ipc.ts src/character/App.tsx src/dialog/App.tsx
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat: click character to toggle dialog window"
+git add electron/window-manager.ts electron/ipc.ts src/character/App.tsx src/dialog/App.tsx
+git commit -m "feat: click character to toggle dialog window"
 ```
 
 ---
@@ -1193,7 +1215,7 @@ describe('NdjsonBuffer', () => {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- ndjson
+npm test -- ndjson
 ```
 
 Expected: tests fail because `electron/agent/ndjson.ts` doesn't exist.
@@ -1236,7 +1258,7 @@ export class NdjsonBuffer {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- ndjson
+npm test -- ndjson
 ```
 
 Expected: all 6 tests pass.
@@ -1244,8 +1266,8 @@ Expected: all 6 tests pass.
 - [ ] **Step 7.5: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/agent/ndjson.ts tests/ndjson.test.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat(agent): NdjsonBuffer for streaming line-delimited JSON"
+git add electron/agent/ndjson.ts tests/ndjson.test.ts
+git commit -m "feat(agent): NdjsonBuffer for streaming line-delimited JSON"
 ```
 
 ---
@@ -1308,7 +1330,7 @@ describe('findBinaryInPaths', () => {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- shell-env
+npm test -- shell-env
 ```
 
 Expected: tests fail (module doesn't exist).
@@ -1382,7 +1404,7 @@ export function resolveClaudePath(): string | null {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test -- shell-env
+npm test -- shell-env
 ```
 
 Expected: all 3 tests pass.
@@ -1390,8 +1412,8 @@ Expected: all 3 tests pass.
 - [ ] **Step 8.5: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/agent/shell-env.ts tests/shell-env.test.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat(agent): resolveClaudePath with cross-platform fallbacks"
+git add electron/agent/shell-env.ts tests/shell-env.test.ts
+git commit -m "feat(agent): resolveClaudePath with cross-platform fallbacks"
 ```
 
 ---
@@ -1478,26 +1500,32 @@ export class ClaudeSession implements AgentSession {
   async start(): Promise<void> {
     const binary = resolveClaudePath()
     if (!binary) {
-      const msg = 'Claude CLI not found.\n\nInstall: curl -fsSL https://claude.ai/install.sh | sh'
+      const msg = 'Claude CLI not found.\n\nInstall on Windows:\n  npm install -g @anthropic-ai/claude-code'
       this.cb.onError?.(msg)
       this.msgs.push({ role: 'error', text: msg })
       return
     }
 
-    const proc = spawn(
-      binary,
-      [
-        '-p',
-        '--output-format', 'stream-json',
-        '--input-format', 'stream-json',
-        '--verbose',
-        '--dangerously-skip-permissions',
-        '--allowed-tools', 'WebFetch,WebSearch,TodoWrite',
-      ],
-      {
-        env: { ...process.env, TERM: 'dumb' },
-      }
-    )
+    const args = [
+      '-p',
+      '--output-format', 'stream-json',
+      '--input-format', 'stream-json',
+      '--verbose',
+      '--dangerously-skip-permissions',
+      '--allowed-tools', 'WebFetch,WebSearch,TodoWrite',
+    ]
+
+    // Windows-specific: spawn() refuses to execute .cmd / .bat scripts directly.
+    // npm-installed claude is a `claude.cmd` shim, so we need shell:true on Windows
+    // when the resolved binary is a batch file. Without this, spawn throws EINVAL
+    // or hangs silently.
+    const isBatch = /\.(cmd|bat)$/i.test(binary)
+    const proc = spawn(binary, args, {
+      env: { ...process.env, TERM: 'dumb' },
+      shell: isBatch,
+      windowsHide: true,
+      windowsVerbatimArguments: isBatch,
+    })
 
     proc.stdout?.setEncoding('utf-8')
     proc.stderr?.setEncoding('utf-8')
@@ -1590,7 +1618,7 @@ export class ClaudeSession implements AgentSession {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npx tsc --noEmit -p tsconfig.json
+npx tsc --noEmit -p tsconfig.json
 ```
 
 Expected: no errors. If there are errors related to imports, check tsconfig.json `paths` and ensure they resolve.
@@ -1598,8 +1626,8 @@ Expected: no errors. If there are errors related to imports, check tsconfig.json
 - [ ] **Step 9.5: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add src/shared/messages.ts electron/agent/session.ts electron/agent/claude.ts
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat(agent): ClaudeSession (spawn claude CLI + parse stream-json events)"
+git add src/shared/messages.ts electron/agent/session.ts electron/agent/claude.ts
+git commit -m "feat(agent): ClaudeSession (spawn claude CLI + parse stream-json events)"
 ```
 
 ---
@@ -1872,7 +1900,7 @@ export function App() {
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm run dev
+npm run dev
 ```
 
 Expected:
@@ -1888,8 +1916,8 @@ If `claude` is not on PATH or not installed: dialog will show an error message i
 - [ ] **Step 10.5: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add electron/ipc.ts electron/main.ts src/dialog/App.tsx
-git -C /Users/caojun/bigkingfile/JPT commit -m "feat: end-to-end dialog ↔ main ↔ claude wired with streaming"
+git add electron/ipc.ts electron/main.ts src/dialog/App.tsx
+git commit -m "feat: end-to-end dialog ↔ main ↔ claude wired with streaming"
 ```
 
 ---
@@ -1903,7 +1931,7 @@ git -C /Users/caojun/bigkingfile/JPT commit -m "feat: end-to-end dialog ↔ main
 
 Run:
 ```bash
-cd /Users/caojun/bigkingfile/JPT && npm test
+npm test
 ```
 
 Expected: all tests pass (`ndjson`, `state-machine`, `shell-env`).
@@ -1926,17 +1954,17 @@ Source spec: `docs/superpowers/specs/2026-05-10-JPT-design.md` §10 (v0 验收)
 - [x] Static end-to-end message: dialog → main → claude → dialog (streaming)
 - [x] User can click character to open dialog, type "hello", receive Claude response
 
-## How to run
+## How to run (Windows)
 
-```bash
-cd /Users/caojun/bigkingfile/JPT
-npm install        # first time only
-npm run dev        # opens character + dialog windows
+```powershell
+# from JPT repo root
+npm install   # first time only
+npm run dev   # opens character + dialog windows
 ```
 
 ## How to test
 
-1. Wait for the red square to appear at the bottom of the primary display
+1. Wait for the red square to appear at the bottom of the primary display (above the taskbar)
 2. Wait for it to walk left and right
 3. Click the red square → dialog window appears
 4. Type `hello` → press Enter
@@ -1948,14 +1976,14 @@ npm run dev        # opens character + dialog windows
 - [ ] **Step 11.3: Commit**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT add docs/v0-acceptance.md
-git -C /Users/caojun/bigkingfile/JPT commit -m "docs: v0 acceptance log"
+git add docs/v0-acceptance.md
+git commit -m "docs: v0 acceptance log"
 ```
 
 - [ ] **Step 11.4: Push to GitHub**
 
 ```bash
-git -C /Users/caojun/bigkingfile/JPT push origin main
+git push origin main
 ```
 
 Expected: all v0 commits pushed.
