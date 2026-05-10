@@ -4,6 +4,7 @@
 # Node / Electron
 node_modules/
 dist/
+dist-electron/
 out/
 build/
 release/
