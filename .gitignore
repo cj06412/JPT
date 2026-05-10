@@ -1,0 +1,55 @@
+# Visual brainstorm artifacts (kept outside repo intentionally)
+.superpowers/
+
+# Node / Electron
+node_modules/
+dist/
+out/
+build/
+release/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite
+.vite/
+
+# Local env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Electron-builder output
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.snap
+*.zip
+!assets/**/*.zip
+
+# Generated AI assets work-in-progress
+assets/sprites/_drafts/
+assets/sprites/*.aseprite
+
+# Python (if any tooling lands here later)
+__pycache__/
+*.pyc
+.venv/
+venv/
