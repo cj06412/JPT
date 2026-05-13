@@ -35,7 +35,7 @@ function createCharacterWindow(): BrowserWindow {
     skipTaskbar: true,
     resizable: false,
     hasShadow: false,
-    focusable: false,
+    focusable: true,
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,

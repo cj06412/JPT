@@ -61,7 +61,9 @@ export function App() {
         background: 'red',
         transform: `scaleX(${state.facing})`,
         transformOrigin: 'center',
+        cursor: 'pointer',
       }}
+      onClick={() => window.jpt.send('character:click')}
     />
   )
 }
