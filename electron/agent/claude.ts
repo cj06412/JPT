@@ -18,6 +18,8 @@ export class ClaudeSession implements AgentSession {
   private msgs: AgentMessage[] = []
   private cb: Partial<AgentSessionCallbacks> = {}
 
+  constructor(private workdir: string) {}
+
   isRunning() { return this.running }
   isBusy() { return this.busy }
   history() { return this.msgs }
@@ -42,6 +44,8 @@ export class ClaudeSession implements AgentSession {
       '--verbose',
       '--dangerously-skip-permissions',
       '--allowed-tools', 'WebFetch,WebSearch,TodoWrite',
+      '--add-dir', this.workdir,
+      '--model', 'claude-opus-4-7',
     ]
 
     // Windows-specific: spawn() refuses to execute .cmd / .bat scripts directly.

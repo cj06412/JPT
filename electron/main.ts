@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { createWindows, JPTWindows } from './window-manager'
 import { registerIpcHandlers } from './ipc'
 import { ClaudeSession } from './agent/claude'
+import { ensureWorkdir } from './agent/workdir'
 
 // Windows 11 + transparent BrowserWindow + GPU acceleration = renderer paints but compositor
 // drops the pixels, leaving the window invisible. Disabling HW acceleration forces software
@@ -13,7 +14,8 @@ let session: ClaudeSession | null = null
 
 app.whenReady().then(async () => {
   windows = createWindows()
-  session = new ClaudeSession()
+  const workdir = ensureWorkdir(app.getPath('userData'))
+  session = new ClaudeSession(workdir)
   registerIpcHandlers(windows, session)
   await session.start()
 })
