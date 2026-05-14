@@ -1,0 +1,44 @@
+appId: com.jpt.app
+productName: JPT
+copyright: Copyright © 2026
+
+# Windows only for v1; macOS/Linux are v2 scope
+directories:
+  output: release
+  buildResources: assets/icons
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+extraResources:
+  - from: assets
+    to: assets
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icons/app-icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: assets/icons/app-icon.ico
+  uninstallerIcon: assets/icons/app-icon.ico
+  installerHeaderIcon: assets/icons/app-icon.ico
+  shortcutName: JPT
+  artifactName: JPT-Setup-${version}.${ext}
+
+# Updater — v1 ships with a placeholder feed URL.
+# Replace with your real GitHub Releases feed before gifting.
+publish:
+  provider: github
+  owner: cj06412
+  repo: JPT
+  releaseType: release
