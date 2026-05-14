@@ -10,6 +10,13 @@ export function registerIpcHandlers(windows: JPTWindows, session: AgentSession) 
   // system/init event fired before the dialog renderer registered its listener).
   ipcMain.handle('agent:is-ready', () => sessionReady)
 
+  // Character → main: toggle window mouse passthrough.
+  // forward:true means the OS still routes mousemove events to the renderer so it can
+  // sample alpha and flip back. forward:false only on solid pixels.
+  ipcMain.on('character:set-passthrough', (_event, passthrough: boolean) => {
+    windows.character.setIgnoreMouseEvents(passthrough, { forward: passthrough })
+  })
+
   // Character → main: position update
   ipcMain.on('character:set-position', (_event, x: number, y: number) => {
     // setBounds (not setPosition) — Electron on Win11 with transparent windows has a known issue

@@ -54,6 +54,9 @@ function createCharacterWindow(): BrowserWindow {
   // (real fullscreen apps still cover it — accepted tradeoff)
   win.setAlwaysOnTop(true, 'screen-saver')
 
+  // v1: window is passthrough by default; renderer enables it on alpha-solid pixels via IPC
+  win.setIgnoreMouseEvents(true, { forward: true })
+
   loadRenderer(win, 'character')
   return win
 }

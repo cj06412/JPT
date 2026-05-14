@@ -9,3 +9,8 @@ declare global {
 }
 
 export {}
+
+declare module '*.png' {
+  const url: string
+  export default url
+}
