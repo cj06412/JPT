@@ -38,11 +38,16 @@ export function toggleDialog(windows: JPTWindows) {
   windows.dialog.focus()
 }
 
+export interface IpcCallbacks {
+  closeWelcome: () => void
+}
+
 export function registerIpcHandlers(
   windows: JPTWindows,
   session: AgentSession,
   config: ConfigStore,
   history: HistoryStore,
+  callbacks: IpcCallbacks,
 ) {
   let sessionReady = false
 
@@ -87,6 +92,9 @@ export function registerIpcHandlers(
 
   // Renderer → main: open settings window (also reached via tray menu)
   ipcMain.on('settings:open', () => openSettingsWindow())
+
+  // Welcome letter close (click anywhere on the letter)
+  ipcMain.on('welcome:close', () => callbacks.closeWelcome())
 
   // Dialog → main: close request
   ipcMain.on('dialog:close', () => {

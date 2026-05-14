@@ -111,3 +111,29 @@ export function createSettingsWindow(): BrowserWindow {
   loadRenderer(win, 'settings')
   return win
 }
+
+export function createWelcomeWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 720,
+    height: 480,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    resizable: false,
+    show: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: PRELOAD_PATH,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  // Center on primary
+  const { workArea } = screen.getPrimaryDisplay()
+  const x = workArea.x + Math.floor((workArea.width - 720) / 2)
+  const y = workArea.y + Math.floor((workArea.height - 480) / 2)
+  win.setPosition(x, y)
+  loadRenderer(win, 'welcome')
+  return win
+}

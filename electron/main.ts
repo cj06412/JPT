@@ -1,6 +1,8 @@
-import { app, Tray } from 'electron'
+import { app, Tray, BrowserWindow } from 'electron'
 import Store from 'electron-store'
-import { createWindows, JPTWindows } from './window-manager'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { createWindows, JPTWindows, createWelcomeWindow } from './window-manager'
 import { registerIpcHandlers, toggleDialog, openSettingsWindow } from './ipc'
 import { ClaudeSession } from './agent/claude'
 import { ensureWorkdir } from './agent/workdir'
@@ -20,13 +22,16 @@ const configStore = new ConfigStore(rawStore)
 let windows: JPTWindows | null = null
 let session: ClaudeSession | null = null
 let tray: Tray | null = null
+let welcomeWin: BrowserWindow | null = null
 
 app.whenReady().then(async () => {
   windows = createWindows()
   const workdir = ensureWorkdir(app.getPath('userData'))
   const historyStore = new HistoryStore(app.getPath('userData'))
   session = new ClaudeSession(workdir)
-  registerIpcHandlers(windows, session, configStore, historyStore)
+  registerIpcHandlers(windows, session, configStore, historyStore, {
+    closeWelcome: () => { welcomeWin?.close() },
+  })
   await session.start()
 
   tray = createTray({
@@ -37,6 +42,14 @@ app.whenReady().then(async () => {
       // T20 will wire this to electron-updater. For now no-op.
     },
   })
+
+  // First-run welcome letter — write a marker so it only shows once per user
+  const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
+  if (!fs.existsSync(firstRunMarker)) {
+    welcomeWin = createWelcomeWindow()
+    welcomeWin.on('closed', () => { welcomeWin = null })
+    fs.writeFileSync(firstRunMarker, new Date().toISOString(), 'utf-8')
+  }
 })
 
 app.on('window-all-closed', () => {
