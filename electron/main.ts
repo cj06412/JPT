@@ -9,6 +9,7 @@ import { ensureWorkdir } from './agent/workdir'
 import { ConfigStore } from './config-store'
 import { HistoryStore } from './history-store'
 import { createTray, trayIconPath } from './tray'
+import { setupAutoUpdates, manualCheck } from './updater'
 import type { ConfigSnapshot } from '../src/shared/config'
 
 // Windows 11 + transparent BrowserWindow + GPU acceleration = renderer paints but compositor
@@ -34,13 +35,13 @@ app.whenReady().then(async () => {
   })
   await session.start()
 
+  setupAutoUpdates()
+
   tray = createTray({
     iconPath: trayIconPath(),
     toggleDialog: () => toggleDialog(windows!),
     openSettings: () => openSettingsWindow(),
-    checkForUpdates: () => {
-      // T20 will wire this to electron-updater. For now no-op.
-    },
+    checkForUpdates: manualCheck,
   })
 
   // First-run welcome letter — write a marker so it only shows once per user
