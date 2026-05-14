@@ -1,11 +1,12 @@
-import { app } from 'electron'
+import { app, Tray } from 'electron'
 import Store from 'electron-store'
 import { createWindows, JPTWindows } from './window-manager'
-import { registerIpcHandlers } from './ipc'
+import { registerIpcHandlers, toggleDialog, openSettingsWindow } from './ipc'
 import { ClaudeSession } from './agent/claude'
 import { ensureWorkdir } from './agent/workdir'
 import { ConfigStore } from './config-store'
 import { HistoryStore } from './history-store'
+import { createTray, trayIconPath } from './tray'
 import type { ConfigSnapshot } from '../src/shared/config'
 
 // Windows 11 + transparent BrowserWindow + GPU acceleration = renderer paints but compositor
@@ -18,6 +19,7 @@ const configStore = new ConfigStore(rawStore)
 
 let windows: JPTWindows | null = null
 let session: ClaudeSession | null = null
+let tray: Tray | null = null
 
 app.whenReady().then(async () => {
   windows = createWindows()
@@ -26,6 +28,15 @@ app.whenReady().then(async () => {
   session = new ClaudeSession(workdir)
   registerIpcHandlers(windows, session, configStore, historyStore)
   await session.start()
+
+  tray = createTray({
+    iconPath: trayIconPath(),
+    toggleDialog: () => toggleDialog(windows!),
+    openSettings: () => openSettingsWindow(),
+    checkForUpdates: () => {
+      // T20 will wire this to electron-updater. For now no-op.
+    },
+  })
 })
 
 app.on('window-all-closed', () => {
@@ -35,6 +46,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  tray?.destroy()
   session?.terminate()
   windows?.character.destroy()
   windows?.dialog.destroy()
