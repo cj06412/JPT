@@ -9,7 +9,9 @@ export function App() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [ready, setReady] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const currentAssistantIdx = useRef<number | null>(null)
 
   // Esc closes; auto-focus input
@@ -20,6 +22,14 @@ export function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Session ready: query current state on mount in case the system/init event
+  // fired before we registered the listener, then also listen for the live event.
+  useEffect(() => {
+    window.jpt.invoke<boolean>('agent:is-ready').then(setReady)
+    const off = window.jpt.on('dialog:session-ready', () => setReady(true))
+    return () => { off() }
   }, [])
 
   // Wire IPC events from main
@@ -55,9 +65,15 @@ export function App() {
     }
   }, [])
 
+  // Pin scroll to bottom on any message change (incl. mid-stream token append).
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [msgs])
+
   const onSend = () => {
     const text = input.trim()
-    if (!text || busy) return
+    if (!text || busy || !ready) return
     setMsgs((p) => [...p, { role: 'user', text }])
     setInput('')
     setBusy(true)
@@ -78,6 +94,7 @@ export function App() {
       }}
     >
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -109,12 +126,12 @@ export function App() {
         <input
           ref={inputRef}
           value={input}
-          disabled={busy}
+          disabled={busy || !ready}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSend()
           }}
-          placeholder={busy ? 'JPT 思考中…' : '说点什么…'}
+          placeholder={!ready ? 'JPT 准备中…' : busy ? 'JPT 思考中…' : '说点什么…'}
           style={{
             flex: 1,
             padding: 8,
@@ -124,7 +141,7 @@ export function App() {
           }}
         />
         <button
-          disabled={busy}
+          disabled={busy || !ready}
           onClick={onSend}
           style={{
             padding: '6px 14px',

@@ -44,14 +44,17 @@ export function resolveClaudePath(): string | null {
   const direct = findBinaryInPaths('claude', candidates)
   if (direct) return direct
 
-  // Fallback: scan PATH from current process env
+  // Fallback: scan PATH from current process env. On Windows, npm-installed `claude`
+  // is `claude.cmd` (not `claude.exe`) — probe both so a custom npm prefix still resolves.
   const pathVar = process.env.PATH || ''
   const sep = isWindows ? ';' : ':'
-  const ext = isWindows ? '.exe' : ''
+  const exts = isWindows ? ['.exe', '.cmd'] : ['']
   const pathDirs = pathVar.split(sep).filter(Boolean)
   for (const dir of pathDirs) {
-    const candidate = path.join(dir, `claude${ext}`)
-    if (fs.existsSync(candidate)) return candidate
+    for (const ext of exts) {
+      const candidate = path.join(dir, `claude${ext}`)
+      if (fs.existsSync(candidate)) return candidate
+    }
   }
 
   return null

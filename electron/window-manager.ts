@@ -9,6 +9,13 @@ const RENDERER_DIST = path.join(__dirname, '..', 'dist')
 
 const PRELOAD_PATH = path.join(__dirname, 'preload.js')
 
+// Window dimensions in DIP. Exported so ipc.ts can position the dialog with the
+// same numbers without drift between createDialogWindow() and the click handler.
+export const CHARACTER_W = 96
+export const CHARACTER_H = 128
+export const DIALOG_W = 720
+export const DIALOG_H = 360
+
 export interface JPTWindows {
   character: BrowserWindow
   dialog: BrowserWindow
@@ -25,10 +32,10 @@ function createCharacterWindow(): BrowserWindow {
   const { workArea } = display
 
   const win = new BrowserWindow({
-    width: 96,
-    height: 128,
+    width: CHARACTER_W,
+    height: CHARACTER_H,
     x: workArea.x + 100,
-    y: workArea.y + workArea.height - 128,
+    y: workArea.y + workArea.height - CHARACTER_H,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -53,8 +60,8 @@ function createCharacterWindow(): BrowserWindow {
 
 function createDialogWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 720,
-    height: 360,
+    width: DIALOG_W,
+    height: DIALOG_H,
     frame: false,
     transparent: true,
     alwaysOnTop: true,

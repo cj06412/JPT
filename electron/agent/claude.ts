@@ -9,6 +9,8 @@ import type { AgentSession, AgentSessionCallbacks } from './session'
  * Protocol mirror: lil-agents ClaudeSession.swift, particularly the
  * `parseLine` switch on `type` ∈ {system, assistant, user, result}.
  */
+const STDERR_BUFFER_CAP = 8192
+
 export class ClaudeSession implements AgentSession {
   private proc: ChildProcess | null = null
   private buffer = new NdjsonBuffer()
@@ -17,18 +19,21 @@ export class ClaudeSession implements AgentSession {
   private currentResponseText = ''
   private msgs: AgentMessage[] = []
   private cb: Partial<AgentSessionCallbacks> = {}
+  private stderrBuf = ''
 
   constructor(private workdir: string) {}
 
   isRunning() { return this.running }
   isBusy() { return this.busy }
-  history() { return this.msgs }
+  history(): AgentMessage[] { return [...this.msgs] }
 
   setCallbacks(cb: Partial<AgentSessionCallbacks>) {
     this.cb = { ...this.cb, ...cb }
   }
 
   async start(): Promise<void> {
+    if (this.running || this.proc) return // idempotent — don't orphan an existing child
+
     const binary = resolveClaudePath()
     if (!binary) {
       const msg = 'Claude CLI not found.\n\nInstall on Windows:\n  npm install -g @anthropic-ai/claude-code'
@@ -74,12 +79,31 @@ export class ClaudeSession implements AgentSession {
     })
 
     proc.stderr?.on('data', (chunk: string) => {
-      this.cb.onError?.(chunk)
+      // Claude CLI writes non-fatal warnings to stderr (rate-limit info, model fallback notices,
+      // etc). Buffering quietly avoids interrupting the UI with red error bubbles mid-stream;
+      // we surface the buffer only if the process exits with non-zero code or errors out.
+      this.stderrBuf += chunk
+      if (this.stderrBuf.length > STDERR_BUFFER_CAP) {
+        this.stderrBuf = this.stderrBuf.slice(-STDERR_BUFFER_CAP)
+      }
     })
 
-    proc.on('exit', () => {
+    proc.on('error', (err) => {
+      // spawn-time failures (ENOENT race, EACCES, etc.); without this listener Node treats
+      // the error as unhandled and crashes the Electron main process.
+      this.cb.onError?.(`Failed to launch Claude CLI: ${err.message}`)
       this.running = false
       this.busy = false
+    })
+
+    proc.on('exit', (code) => {
+      this.running = false
+      this.busy = false
+      if (code !== 0 && code !== null) {
+        const stderr = this.stderrBuf.trim()
+        if (stderr) this.cb.onError?.(`Claude exited with code ${code}:\n${stderr}`)
+      }
+      this.stderrBuf = ''
       this.cb.onProcessExit?.()
     })
 
