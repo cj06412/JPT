@@ -2,13 +2,21 @@ import { ipcMain, screen } from 'electron'
 import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H } from './window-manager'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
+import type { ConfigStore } from './config-store'
+import type { ConfigSnapshot } from '../src/shared/config'
 
-export function registerIpcHandlers(windows: JPTWindows, session: AgentSession) {
+export function registerIpcHandlers(windows: JPTWindows, session: AgentSession, config: ConfigStore) {
   let sessionReady = false
 
   // Renderer queries current ready state on mount (covers the race where the
   // system/init event fired before the dialog renderer registered its listener).
   ipcMain.handle('agent:is-ready', () => sessionReady)
+
+  // Settings IPC — renderer reads/writes config; main owns the file
+  ipcMain.handle('settings:get', () => config.snapshot())
+  ipcMain.handle('settings:set', (_event, patch: Partial<ConfigSnapshot>) => {
+    return config.update(patch)
+  })
 
   // Character → main: toggle window mouse passthrough.
   // forward:true means the OS still routes mousemove events to the renderer so it can
