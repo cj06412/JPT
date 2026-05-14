@@ -41,6 +41,8 @@ export function App() {
           dt,
           leftBound: bounds.leftBound,
           rightBound: bounds.rightBound,
+          floorY: bounds.floorY,
+          rightWall: bounds.rightBound,
         })
         if (next !== stateRef.current) {
           setState(next)
