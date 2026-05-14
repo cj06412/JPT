@@ -5,6 +5,7 @@ import { registerIpcHandlers } from './ipc'
 import { ClaudeSession } from './agent/claude'
 import { ensureWorkdir } from './agent/workdir'
 import { ConfigStore } from './config-store'
+import { HistoryStore } from './history-store'
 import type { ConfigSnapshot } from '../src/shared/config'
 
 // Windows 11 + transparent BrowserWindow + GPU acceleration = renderer paints but compositor
@@ -21,8 +22,9 @@ let session: ClaudeSession | null = null
 app.whenReady().then(async () => {
   windows = createWindows()
   const workdir = ensureWorkdir(app.getPath('userData'))
+  const historyStore = new HistoryStore(app.getPath('userData'))
   session = new ClaudeSession(workdir)
-  registerIpcHandlers(windows, session, configStore)
+  registerIpcHandlers(windows, session, configStore, historyStore)
   await session.start()
 })
 

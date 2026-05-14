@@ -3,9 +3,15 @@ import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H } from './window-manager'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
 import type { ConfigStore } from './config-store'
+import type { HistoryStore } from './history-store'
 import type { ConfigSnapshot } from '../src/shared/config'
 
-export function registerIpcHandlers(windows: JPTWindows, session: AgentSession, config: ConfigStore) {
+export function registerIpcHandlers(
+  windows: JPTWindows,
+  session: AgentSession,
+  config: ConfigStore,
+  history: HistoryStore,
+) {
   let sessionReady = false
 
   // Renderer queries current ready state on mount (covers the race where the
@@ -70,6 +76,7 @@ export function registerIpcHandlers(windows: JPTWindows, session: AgentSession, 
 
   // Dialog → main: send user message
   ipcMain.on('dialog:user-send', (_event, message: string) => {
+    history.append({ ts: Date.now(), role: 'user', text: message })
     session.send(message)
   })
 
@@ -84,9 +91,14 @@ export function registerIpcHandlers(windows: JPTWindows, session: AgentSession, 
     },
     onTurnComplete: () => {
       windows.dialog.webContents.send('dialog:turn-complete')
+      const last = session.history().at(-1)
+      if (last && last.role === 'assistant') {
+        history.append({ ts: Date.now(), role: 'assistant', text: last.text })
+      }
     },
     onError: (msg) => {
       windows.dialog.webContents.send('dialog:error', msg)
+      history.append({ ts: Date.now(), role: 'error', text: msg })
     },
     onProcessExit: () => {
       sessionReady = false
