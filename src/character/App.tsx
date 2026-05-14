@@ -94,15 +94,16 @@ export function App() {
         if (!bounds) return
         setState((cur) => releaseHeld(cur, performance.now(), bounds.rightBound, CLING_SNAP_PX))
       } else {
-        // Click (no drag) — toggle dialog if we're in a normal mode, or tap cling
-        setState((cur) => {
-          if (cur.mode === 'cling') {
-            const bounds = boundsRef.current
-            return bounds ? tapCling(cur, performance.now(), bounds.floorY) : cur
-          }
+        // Click (no drag). Read the current mode synchronously via the ref so we
+        // can decide WITHOUT calling setState (whose updater fires twice under
+        // React 19 + StrictMode and would toggle the dialog open-close-open).
+        const cur = stateRef.current
+        if (cur.mode === 'cling') {
+          const bounds = boundsRef.current
+          if (bounds) setState(tapCling(cur, performance.now(), bounds.floorY))
+        } else {
           window.jpt.send('character:click')
-          return cur
-        })
+        }
       }
     }
     window.addEventListener('mousemove', onMouseMove)

@@ -113,32 +113,31 @@ export function createSettingsWindow(): BrowserWindow {
 }
 
 export function createWelcomeWindow(): BrowserWindow {
+  // Framed + opaque on purpose: transparent + frameless + always-on-top has Win11
+  // quirks where clicks and keyboard input can fail to route to the renderer.
+  // Native title bar guarantees the user can always dismiss via the X button.
   const win = new BrowserWindow({
     width: 720,
     height: 480,
-    frame: false,
-    transparent: true,
+    title: 'JPT — 欢迎',
+    frame: true,
+    transparent: false,
+    backgroundColor: '#a86930',  // wood-mid (theme.woodMid) so the letter frames against SDV brown
     alwaysOnTop: true,
     skipTaskbar: false,
     resizable: false,
     show: true,
     focusable: true,
-    backgroundColor: '#00000000',
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
     },
   })
-  // Match the character/dialog windows so the welcome letter sits at the same
-  // top of the z-stack (otherwise default 'floating' could put it below).
-  win.setAlwaysOnTop(true, 'screen-saver')
-  // Center on primary
   const { workArea } = screen.getPrimaryDisplay()
   const x = workArea.x + Math.floor((workArea.width - 720) / 2)
   const y = workArea.y + Math.floor((workArea.height - 480) / 2)
   win.setPosition(x, y)
-  // Force focus so Esc / Enter keyboard handlers reach the renderer
   win.once('ready-to-show', () => win.focus())
   loadRenderer(win, 'welcome')
   return win
