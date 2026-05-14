@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { theme } from '@shared/theme'
 
 const PLACEHOLDER_LETTER = `亲爱的小屿：
@@ -13,32 +14,78 @@ const PLACEHOLDER_LETTER = `亲爱的小屿：
 PS: 关掉这封信 → 我就开始上岗了 :)
 `
 
+function close() {
+  window.jpt.send('welcome:close')
+}
+
 export function App() {
+  // Esc closes — same convention as the dialog window.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-      boxSizing: 'border-box',
-    }}>
-      <div style={{
-        maxWidth: 520,
-        background: theme.paperBg,
-        boxShadow: theme.cardShadow,
-        border: `4px solid ${theme.woodOutline}`,
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: 24,
-        whiteSpace: 'pre-line',
-        lineHeight: 1.8,
-        cursor: 'pointer',
+        boxSizing: 'border-box',
       }}
-      onClick={() => window.jpt.send('welcome:close')}
+      onClick={close /* clicking the transparent surround also closes */}
+    >
+      <div
+        style={{
+          position: 'relative',
+          maxWidth: 520,
+          background: theme.paperBg,
+          boxShadow: theme.cardShadow,
+          border: `4px solid ${theme.woodOutline}`,
+          padding: 24,
+          whiteSpace: 'pre-line',
+          lineHeight: 1.8,
+          cursor: 'pointer',
+        }}
+        onClick={(e) => {
+          e.stopPropagation()
+          close()
+        }}
       >
+        {/* Explicit × close button in case click-through doesn't register */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            close()
+          }}
+          aria-label="关闭"
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            width: 28,
+            height: 28,
+            background: theme.nameplate,
+            border: `2px solid ${theme.woodOutline}`,
+            color: theme.paperInk,
+            fontSize: 16,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ×
+        </button>
         {PLACEHOLDER_LETTER}
         <div style={{ marginTop: 16, opacity: 0.6, fontSize: 12, textAlign: 'right' }}>
-          点击关闭
+          点击信纸 / 点 × / Esc 关闭
         </div>
       </div>
     </div>

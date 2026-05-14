@@ -122,6 +122,7 @@ export function createWelcomeWindow(): BrowserWindow {
     skipTaskbar: false,
     resizable: false,
     show: true,
+    focusable: true,
     backgroundColor: '#00000000',
     webPreferences: {
       preload: PRELOAD_PATH,
@@ -129,11 +130,16 @@ export function createWelcomeWindow(): BrowserWindow {
       nodeIntegration: false,
     },
   })
+  // Match the character/dialog windows so the welcome letter sits at the same
+  // top of the z-stack (otherwise default 'floating' could put it below).
+  win.setAlwaysOnTop(true, 'screen-saver')
   // Center on primary
   const { workArea } = screen.getPrimaryDisplay()
   const x = workArea.x + Math.floor((workArea.width - 720) / 2)
   const y = workArea.y + Math.floor((workArea.height - 480) / 2)
   win.setPosition(x, y)
+  // Force focus so Esc / Enter keyboard handlers reach the renderer
+  win.once('ready-to-show', () => win.focus())
   loadRenderer(win, 'welcome')
   return win
 }

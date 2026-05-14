@@ -44,12 +44,20 @@ app.whenReady().then(async () => {
     checkForUpdates: manualCheck,
   })
 
-  // First-run welcome letter — write a marker so it only shows once per user
+  // First-run welcome letter — only mark "shown" AFTER the user actually
+  // dismisses the letter (otherwise a stuck welcome window would suppress
+  // itself on relaunch and the user could never see the letter again).
   const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
   if (!fs.existsSync(firstRunMarker)) {
     welcomeWin = createWelcomeWindow()
-    welcomeWin.on('closed', () => { welcomeWin = null })
-    fs.writeFileSync(firstRunMarker, new Date().toISOString(), 'utf-8')
+    welcomeWin.on('closed', () => {
+      welcomeWin = null
+      try {
+        fs.writeFileSync(firstRunMarker, new Date().toISOString(), 'utf-8')
+      } catch (e) {
+        console.error('[JPT] failed to write first-run marker:', e)
+      }
+    })
   }
 })
 
