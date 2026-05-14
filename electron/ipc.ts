@@ -1,13 +1,15 @@
-import { ipcMain } from 'electron'
-import { JPTWindows } from './window-manager'
+import { ipcMain, screen } from 'electron'
+import type { JPTWindows } from './window-manager'
+import type { AgentSession } from './agent/session'
 
-export function registerIpcHandlers(windows: JPTWindows) {
+export function registerIpcHandlers(windows: JPTWindows, session: AgentSession) {
+  // Character → main: position update
   ipcMain.on('character:set-position', (_event, x: number, y: number) => {
     windows.character.setPosition(Math.round(x), Math.round(y))
   })
 
+  // Character → main: walk bounds query
   ipcMain.handle('character:get-walk-bounds', () => {
-    const { screen } = require('electron') as typeof import('electron')
     const display = screen.getPrimaryDisplay()
     const { workArea } = display
     return {
@@ -17,13 +19,13 @@ export function registerIpcHandlers(windows: JPTWindows) {
     }
   })
 
+  // Character → main: click toggles dialog
   ipcMain.on('character:click', () => {
     if (windows.dialog.isVisible()) {
       windows.dialog.hide()
       return
     }
     const charBounds = windows.character.getBounds()
-    const { screen } = require('electron') as typeof import('electron')
     const { workArea } = screen.getPrimaryDisplay()
     const dialogW = 720
     const dialogH = 360
@@ -32,15 +34,35 @@ export function registerIpcHandlers(windows: JPTWindows) {
     if (x + dialogW > workArea.x + workArea.width) {
       x = charBounds.x - dialogW - 10
     }
-    if (y < workArea.y) {
-      y = workArea.y
-    }
+    if (y < workArea.y) y = workArea.y
     windows.dialog.setBounds({ x, y, width: dialogW, height: dialogH })
     windows.dialog.show()
     windows.dialog.focus()
   })
 
+  // Dialog → main: close request
   ipcMain.on('dialog:close', () => {
     windows.dialog.hide()
+  })
+
+  // Dialog → main: send user message
+  ipcMain.on('dialog:user-send', (_event, message: string) => {
+    session.send(message)
+  })
+
+  // Wire session callbacks → dialog renderer
+  session.setCallbacks({
+    onText: (chunk) => {
+      windows.dialog.webContents.send('dialog:stream-token', chunk)
+    },
+    onTurnComplete: () => {
+      windows.dialog.webContents.send('dialog:turn-complete')
+    },
+    onError: (msg) => {
+      windows.dialog.webContents.send('dialog:error', msg)
+    },
+    onProcessExit: () => {
+      windows.dialog.webContents.send('dialog:error', 'Claude process exited')
+    },
   })
 }
