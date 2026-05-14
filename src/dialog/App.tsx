@@ -1,4 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { SDVFrame } from './SDVFrame'
+import { PaperPanel } from './PaperPanel'
+import { PortraitPanel } from './PortraitPanel'
+import { InputBar } from './InputBar'
+import { Markdown } from './markdown'
+import { theme } from '@shared/theme'
 
 interface Msg {
   role: 'user' | 'assistant' | 'error'
@@ -14,25 +20,19 @@ export function App() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const currentAssistantIdx = useRef<number | null>(null)
 
-  // Esc closes; auto-focus input
   useEffect(() => {
     inputRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') window.jpt.send('dialog:close')
-    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') window.jpt.send('dialog:close') }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Session ready: query current state on mount in case the system/init event
-  // fired before we registered the listener, then also listen for the live event.
   useEffect(() => {
     window.jpt.invoke<boolean>('agent:is-ready').then(setReady)
     const off = window.jpt.on('dialog:session-ready', () => setReady(true))
     return () => { off() }
   }, [])
 
-  // Wire IPC events from main
   useEffect(() => {
     const offToken = window.jpt.on('dialog:stream-token', (...args: unknown[]) => {
       const chunk = args[0] as string
@@ -58,14 +58,9 @@ export function App() {
       currentAssistantIdx.current = null
       setBusy(false)
     })
-    return () => {
-      offToken()
-      offComplete()
-      offError()
-    }
+    return () => { offToken(); offComplete(); offError() }
   }, [])
 
-  // Pin scroll to bottom on any message change (incl. mid-stream token append).
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
@@ -81,78 +76,34 @@ export function App() {
   }
 
   return (
-    <div
-      style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: 12,
-        gap: 8,
-        background: '#efc88c',
-        border: '4px solid #3e2410',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div
-        ref={scrollRef}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          background: '#fff4dc',
-          padding: 12,
-          fontSize: 14,
-          lineHeight: 1.6,
-        }}
-      >
-        {msgs.length === 0 && (
-          <div style={{ opacity: 0.5 }}>说点什么试试…（Esc 关闭）</div>
-        )}
-        {msgs.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              marginBottom: 8,
-              color: m.role === 'error' ? '#a02a2a' : '#2a1a08',
-            }}
-          >
-            <strong>
-              {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
-            </strong>{' '}
-            {m.text}
-          </div>
-        ))}
+    <SDVFrame>
+      <div style={{ display: 'flex', flex: 1, gap: 8, minHeight: 0 }}>
+        <PaperPanel ref={scrollRef}>
+          {msgs.length === 0 && (
+            <div style={{ color: theme.paperInkFaded }}>说点什么试试…（Esc 关闭）</div>
+          )}
+          {msgs.map((m, i) => (
+            <div
+              key={i}
+              style={{ marginBottom: 8, color: m.role === 'error' ? theme.error : theme.paperInk }}
+            >
+              <strong>
+                {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
+              </strong>{' '}
+              {m.role === 'assistant' ? <Markdown text={m.text} /> : <span>{m.text}</span>}
+            </div>
+          ))}
+        </PaperPanel>
+        <PortraitPanel name="JPT" />
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input
-          ref={inputRef}
-          value={input}
-          disabled={busy || !ready}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onSend()
-          }}
-          placeholder={!ready ? 'JPT 准备中…' : busy ? 'JPT 思考中…' : '说点什么…'}
-          style={{
-            flex: 1,
-            padding: 8,
-            fontSize: 14,
-            border: '2px solid #3e2410',
-            background: '#fff4dc',
-          }}
-        />
-        <button
-          disabled={busy || !ready}
-          onClick={onSend}
-          style={{
-            padding: '6px 14px',
-            background: '#d8b078',
-            border: '2px solid #3e2410',
-            cursor: 'pointer',
-          }}
-        >
-          送
-        </button>
-      </div>
-    </div>
+      <InputBar
+        ref={inputRef}
+        value={input}
+        onChange={setInput}
+        onSend={onSend}
+        disabled={busy || !ready}
+        placeholder={!ready ? 'JPT 准备中…' : busy ? 'JPT 思考中…' : '说点什么…'}
+      />
+    </SDVFrame>
   )
 }
