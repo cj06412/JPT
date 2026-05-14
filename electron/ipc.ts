@@ -5,7 +5,10 @@ import type { AgentSession } from './agent/session'
 export function registerIpcHandlers(windows: JPTWindows, session: AgentSession) {
   // Character → main: position update
   ipcMain.on('character:set-position', (_event, x: number, y: number) => {
-    windows.character.setPosition(Math.round(x), Math.round(y))
+    // setBounds (not setPosition) — Electron on Win11 with transparent windows has a known issue
+    // where setPosition silently grows the window by 1px on each call. setBounds with explicit
+    // width/height every frame prevents the drift.
+    windows.character.setBounds({ x: Math.round(x), y: Math.round(y), width: 96, height: 128 })
   })
 
   // Character → main: walk bounds query

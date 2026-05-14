@@ -75,7 +75,9 @@ function createDialogWindow(): BrowserWindow {
 
 function loadRenderer(win: BrowserWindow, name: 'character' | 'dialog') {
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(`${VITE_DEV_SERVER_URL}/src/${name}/index.html`)
+    // VITE_DEV_SERVER_URL ships with a trailing slash; strip it so the URL doesn't end up with //
+    const base = VITE_DEV_SERVER_URL.replace(/\/$/, '')
+    win.loadURL(`${base}/src/${name}/index.html`)
   } else {
     win.loadFile(path.join(RENDERER_DIST, `src/${name}/index.html`))
   }
