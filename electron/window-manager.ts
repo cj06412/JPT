@@ -83,7 +83,7 @@ function createDialogWindow(): BrowserWindow {
   return win
 }
 
-function loadRenderer(win: BrowserWindow, name: 'character' | 'dialog') {
+function loadRenderer(win: BrowserWindow, name: 'character' | 'dialog' | 'settings' | 'welcome') {
   if (VITE_DEV_SERVER_URL) {
     // VITE_DEV_SERVER_URL ships with a trailing slash; strip it so the URL doesn't end up with //
     const base = VITE_DEV_SERVER_URL.replace(/\/$/, '')
@@ -91,4 +91,23 @@ function loadRenderer(win: BrowserWindow, name: 'character' | 'dialog') {
   } else {
     win.loadFile(path.join(RENDERER_DIST, `src/${name}/index.html`))
   }
+}
+
+export function createSettingsWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 480,
+    height: 560,
+    frame: true,
+    title: 'JPT 设置',
+    backgroundColor: '#efc88c',
+    resizable: true,
+    show: true,
+    webPreferences: {
+      preload: PRELOAD_PATH,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  loadRenderer(win, 'settings')
+  return win
 }

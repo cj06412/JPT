@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JPT — 设置</title>
+  <style>
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: "Zpix", "Cubic 11", system-ui, sans-serif;
+      font-size: 14px;
+      background: #efc88c;
+      color: #2a1a08;
+    }
+  </style>
+  <script type="module">
+    import zpixUrl from '../../assets/fonts/zpix.ttf?url'
+    const style = document.createElement('style')
+    style.textContent = `@font-face { font-family: 'Zpix'; src: url('${zpixUrl}') format('truetype'); font-display: swap; }`
+    document.head.appendChild(style)
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./main.tsx"></script>
+</body>
+</html>

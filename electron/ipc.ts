@@ -1,10 +1,42 @@
-import { ipcMain, screen } from 'electron'
-import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H } from './window-manager'
+import { ipcMain, screen, BrowserWindow } from 'electron'
+import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow } from './window-manager'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
 import type { ConfigStore } from './config-store'
 import type { HistoryStore } from './history-store'
 import type { ConfigSnapshot } from '../src/shared/config'
+
+/** Single-instance settings window. Both the tray menu and the dialog renderer
+ *  go through this to open settings. */
+const settingsState: { instance: BrowserWindow | null } = { instance: null }
+
+export function openSettingsWindow() {
+  if (settingsState.instance && !settingsState.instance.isDestroyed()) {
+    settingsState.instance.focus()
+    return
+  }
+  settingsState.instance = createSettingsWindow()
+  settingsState.instance.on('closed', () => { settingsState.instance = null })
+}
+
+/** Same logic as character:click — wired here so the tray can reuse it. */
+export function toggleDialog(windows: JPTWindows) {
+  if (windows.dialog.isVisible()) {
+    windows.dialog.hide()
+    return
+  }
+  const charBounds = windows.character.getBounds()
+  const { workArea } = screen.getPrimaryDisplay()
+  let x = charBounds.x + charBounds.width + 10
+  let y = charBounds.y - DIALOG_H + charBounds.height
+  if (x + DIALOG_W > workArea.x + workArea.width) {
+    x = charBounds.x - DIALOG_W - 10
+  }
+  if (y < workArea.y) y = workArea.y
+  windows.dialog.setBounds({ x, y, width: DIALOG_W, height: DIALOG_H })
+  windows.dialog.show()
+  windows.dialog.focus()
+}
 
 export function registerIpcHandlers(
   windows: JPTWindows,
@@ -51,23 +83,10 @@ export function registerIpcHandlers(
   })
 
   // Character → main: click toggles dialog
-  ipcMain.on('character:click', () => {
-    if (windows.dialog.isVisible()) {
-      windows.dialog.hide()
-      return
-    }
-    const charBounds = windows.character.getBounds()
-    const { workArea } = screen.getPrimaryDisplay()
-    let x = charBounds.x + charBounds.width + 10
-    let y = charBounds.y - DIALOG_H + charBounds.height
-    if (x + DIALOG_W > workArea.x + workArea.width) {
-      x = charBounds.x - DIALOG_W - 10
-    }
-    if (y < workArea.y) y = workArea.y
-    windows.dialog.setBounds({ x, y, width: DIALOG_W, height: DIALOG_H })
-    windows.dialog.show()
-    windows.dialog.focus()
-  })
+  ipcMain.on('character:click', () => toggleDialog(windows))
+
+  // Renderer → main: open settings window (also reached via tray menu)
+  ipcMain.on('settings:open', () => openSettingsWindow())
 
   // Dialog → main: close request
   ipcMain.on('dialog:close', () => {

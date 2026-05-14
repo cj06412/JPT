@@ -51,6 +51,8 @@ export default defineConfig({
       input: {
         character: path.resolve(__dirname, 'src/character/index.html'),
         dialog: path.resolve(__dirname, 'src/dialog/index.html'),
+        settings: path.resolve(__dirname, 'src/settings/index.html'),
+        welcome: path.resolve(__dirname, 'src/welcome/index.html'),
       },
     },
   },
