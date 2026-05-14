@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow } from 'electron'
+import { app, Tray, BrowserWindow, Menu } from 'electron'
 import Store from 'electron-store'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -16,6 +16,10 @@ import type { ConfigSnapshot } from '../src/shared/config'
 // drops the pixels, leaving the window invisible. Disabling HW acceleration forces software
 // composition which paints transparent windows correctly. Must be called before whenReady.
 app.disableHardwareAcceleration()
+
+// We never use Electron's default application menu (File / Edit / View / ...).
+// Strip it globally so framed windows (welcome, settings) don't show the menubar.
+Menu.setApplicationMenu(null)
 
 const rawStore = new Store<ConfigSnapshot>()
 const configStore = new ConfigStore(rawStore)
