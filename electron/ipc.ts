@@ -62,6 +62,9 @@ export function registerIpcHandlers(
   ipcMain.handle('settings:get', () => config.snapshot())
   ipcMain.handle('settings:set', async (_event, patch: Partial<ConfigSnapshot>) => {
     const snap = config.update(patch)
+    if (patch.soundsEnabled !== undefined) {
+      windows.dialog.webContents.send('settings:sounds-changed', snap.soundsEnabled)
+    }
     if (patch.personaDoc !== undefined) {
       const changed = writePersona(app.getPath('userData'), snap.personaDoc)
       if (changed) {

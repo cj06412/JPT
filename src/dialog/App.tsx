@@ -8,10 +8,15 @@ import { theme } from '@shared/theme'
 import { ToolUseCard } from './ToolUseCard'
 import { parseSlash, slashHelpText } from './slash'
 import type { Expression } from './PortraitPanel'
+import { playSound, setSoundsEnabled } from './sounds'
 
 type Msg =
   | { role: 'user' | 'assistant' | 'error'; text: string }
   | { role: 'tool'; tool: string; summary: string; result?: string; isError?: boolean }
+
+// Type-sound throttle: streaming tokens arrive far faster than is pleasant to
+// hear. Module-level so it persists across renders. ~140ms between blips.
+let lastType = 0
 
 export function App() {
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -36,6 +41,12 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    window.jpt.invoke<{ soundsEnabled: boolean }>('settings:get').then((c) => setSoundsEnabled(c.soundsEnabled))
+    const off = window.jpt.on('settings:sounds-changed', (...a: unknown[]) => setSoundsEnabled(Boolean(a[0])))
+    return () => { off() }
+  }, [])
+
+  useEffect(() => {
     const offToken = window.jpt.on('dialog:stream-token', (...args: unknown[]) => {
       const chunk = args[0] as string
       // Append to the trailing assistant message if there is one, otherwise
@@ -49,10 +60,15 @@ export function App() {
         }
         return [...prev, { role: 'assistant', text: chunk }]
       })
+      if (Date.now() - lastType > 140) {
+        lastType = Date.now()
+        playSound('type')
+      }
     })
     const offComplete = window.jpt.on('dialog:turn-complete', () => {
       setBusy(false)
       setExpression('smile')
+      playSound('complete')
     })
     const offError = window.jpt.on('dialog:error', (...args: unknown[]) => {
       const msg = args[0] as string
@@ -111,6 +127,7 @@ export function App() {
     setBusy(true)
     setExpression('think')
     window.jpt.send('dialog:user-send', text)
+    playSound('click')
   }
 
   return (
