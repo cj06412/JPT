@@ -38,15 +38,20 @@ export function App() {
     return () => { off() }
   }, [])
 
-  // Bounds query on mount
+  // Bounds query on mount + on multi-screen / taskbar changes
   useEffect(() => {
     let mounted = true
-    window.jpt.invoke<WalkBounds>('character:get-walk-bounds').then((b) => {
-      if (!mounted) return
-      boundsRef.current = b
-      setState((s) => ({ ...s, x: b.leftBound, y: b.floorY }))
-    })
-    return () => { mounted = false }
+    const fetchBounds = () => {
+      window.jpt.invoke<WalkBounds>('character:get-walk-bounds').then((b) => {
+        if (!mounted) return
+        boundsRef.current = b
+        // keep x in range, snap y to new floor
+        setState((s) => ({ ...s, x: Math.min(Math.max(s.x, b.leftBound), b.rightBound), y: b.floorY }))
+      })
+    }
+    fetchBounds()
+    const off = window.jpt.on('character:bounds-changed', fetchBounds)
+    return () => { mounted = false; off() }
   }, [])
 
   // Mouse handlers — window receives all clicks (v1 skips pixel-level click-through)

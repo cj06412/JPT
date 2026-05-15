@@ -1,4 +1,4 @@
-import { app, Tray, BrowserWindow, Menu } from 'electron'
+import { app, Tray, BrowserWindow, Menu, screen } from 'electron'
 import Store from 'electron-store'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -72,6 +72,13 @@ app.whenReady().then(async () => {
     lastProactive = Date.now()
     windows.dialog.webContents.send('dialog:proactive', msg.text)
   }, 10 * 60_000)
+
+  // Multi-screen / taskbar changes: tell the character to re-query its floor
+  // geometry so it stays on the active (taskbar-bearing) display. spec §3.3.
+  const refreshBounds = () => windows?.character.webContents.send('character:bounds-changed')
+  screen.on('display-added', refreshBounds)
+  screen.on('display-removed', refreshBounds)
+  screen.on('display-metrics-changed', refreshBounds)
 
   setupAutoUpdates()
 

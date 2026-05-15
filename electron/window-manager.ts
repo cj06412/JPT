@@ -21,6 +21,35 @@ export interface JPTWindows {
   dialog: BrowserWindow
 }
 
+/**
+ * The "active" display for the character: the one whose workArea differs from
+ * bounds (i.e. the taskbar lives on it). Falls back to primary. spec §3.3.
+ */
+export function activeDisplay() {
+  const all = screen.getAllDisplays()
+  const withTaskbar = all.find(
+    (d) => d.bounds.height - d.workArea.height > 0 || d.bounds.width - d.workArea.width > 0,
+  )
+  return withTaskbar ?? screen.getPrimaryDisplay()
+}
+
+/**
+ * Floor geometry for a display, accounting for taskbar autohide. When autohide
+ * is on, workArea == bounds, so we reserve a small safety margin so the
+ * character doesn't sit under the (popping-up) taskbar. spec §3.3.
+ */
+export function floorGeometry() {
+  const d = activeDisplay()
+  const autohide =
+    d.bounds.height - d.workArea.height < 4 && d.bounds.width - d.workArea.width < 4
+  const safety = autohide ? 48 : 0
+  return {
+    leftBound: d.workArea.x,
+    rightBound: d.workArea.x + d.workArea.width - CHARACTER_W,
+    floorY: d.workArea.y + d.workArea.height - CHARACTER_H - safety,
+  }
+}
+
 export function createWindows(): JPTWindows {
   const character = createCharacterWindow()
   const dialog = createDialogWindow()
@@ -28,7 +57,7 @@ export function createWindows(): JPTWindows {
 }
 
 function createCharacterWindow(): BrowserWindow {
-  const display = screen.getPrimaryDisplay()
+  const display = activeDisplay()
   const { workArea } = display
 
   const win = new BrowserWindow({

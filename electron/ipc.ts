@@ -1,5 +1,5 @@
 import { ipcMain, screen, BrowserWindow, app } from 'electron'
-import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow } from './window-manager'
+import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow, floorGeometry } from './window-manager'
 import { writePersona } from './agent/workdir'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
@@ -85,16 +85,8 @@ export function registerIpcHandlers(
     windows.character.setBounds({ x: Math.round(x), y: Math.round(y), width: CHARACTER_W, height: CHARACTER_H })
   })
 
-  // Character → main: walk bounds query
-  ipcMain.handle('character:get-walk-bounds', () => {
-    const display = screen.getPrimaryDisplay()
-    const { workArea } = display
-    return {
-      leftBound: workArea.x,
-      rightBound: workArea.x + workArea.width - CHARACTER_W,
-      floorY: workArea.y + workArea.height - CHARACTER_H,
-    }
-  })
+  // Character → main: walk bounds query (active screen + taskbar-autohide aware)
+  ipcMain.handle('character:get-walk-bounds', () => floorGeometry())
 
   // Character → main: click toggles dialog
   ipcMain.on('character:click', () => toggleDialog(windows))
