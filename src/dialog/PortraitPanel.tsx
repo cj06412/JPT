@@ -1,12 +1,25 @@
 import { theme } from '@shared/theme'
 import { Nameplate } from './Nameplate'
-import portraitUrl from '../../assets/sprites/jpt-portrait.png'
+import portraitDefault from '../../assets/sprites/jpt-portrait.png'
+import portraitSmile from '../../assets/sprites/jpt-portrait-smile.png'
+import portraitThink from '../../assets/sprites/jpt-portrait-think.png'
+import portraitConfused from '../../assets/sprites/jpt-portrait-confused.png'
+
+export type Expression = 'default' | 'smile' | 'think' | 'confused'
+
+const EXPR_SRC: Record<Expression, string> = {
+  default: portraitDefault,
+  smile: portraitSmile,
+  think: portraitThink,
+  confused: portraitConfused,
+}
 
 export interface PortraitPanelProps {
   name: string
+  expression: Expression
 }
 
-export function PortraitPanel({ name }: PortraitPanelProps) {
+export function PortraitPanel({ name, expression }: PortraitPanelProps) {
   return (
     <div
       style={{
@@ -28,7 +41,7 @@ export function PortraitPanel({ name }: PortraitPanelProps) {
         }}
       >
         <img
-          src={portraitUrl}
+          src={EXPR_SRC[expression]}
           alt={name}
           draggable={false}
           style={{

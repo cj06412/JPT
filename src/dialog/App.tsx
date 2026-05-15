@@ -7,6 +7,7 @@ import { Markdown } from './markdown'
 import { theme } from '@shared/theme'
 import { ToolUseCard } from './ToolUseCard'
 import { parseSlash, slashHelpText } from './slash'
+import type { Expression } from './PortraitPanel'
 
 type Msg =
   | { role: 'user' | 'assistant' | 'error'; text: string }
@@ -17,6 +18,7 @@ export function App() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [ready, setReady] = useState(false)
+  const [expression, setExpression] = useState<Expression>('default')
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -50,15 +52,18 @@ export function App() {
     })
     const offComplete = window.jpt.on('dialog:turn-complete', () => {
       setBusy(false)
+      setExpression('smile')
     })
     const offError = window.jpt.on('dialog:error', (...args: unknown[]) => {
       const msg = args[0] as string
       setMsgs((prev) => [...prev, { role: 'error', text: msg }])
       setBusy(false)
+      setExpression('confused')
     })
     const offToolUse = window.jpt.on('dialog:tool-use', (...args: unknown[]) => {
       const { tool, summary } = args[0] as { tool: string; summary: string }
       setMsgs((prev) => [...prev, { role: 'tool', tool, summary }])
+      setExpression('think')
     })
     const offToolResult = window.jpt.on('dialog:tool-result', (...args: unknown[]) => {
       const { summary, isError } = args[0] as { summary: string; isError: boolean }
@@ -104,6 +109,7 @@ export function App() {
     setMsgs((p) => [...p, { role: 'user', text }])
     setInput('')
     setBusy(true)
+    setExpression('think')
     window.jpt.send('dialog:user-send', text)
   }
 
@@ -131,7 +137,7 @@ export function App() {
             )
           })}
         </PaperPanel>
-        <PortraitPanel name="JPT" />
+        <PortraitPanel name="JPT" expression={expression} />
       </div>
       <InputBar
         ref={inputRef}
