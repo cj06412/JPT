@@ -19,7 +19,7 @@ function close() {
 }
 
 export function App() {
-  // Esc closes — same convention as the dialog window.
+  // Esc / Enter closes — redundant path in case the click handlers misfire.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter') close()
@@ -31,62 +31,48 @@ export function App() {
   return (
     <div
       style={{
+        position: 'relative',
         width: '100%',
         height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
         boxSizing: 'border-box',
+        background: theme.paperBg,
+        boxShadow: theme.cardShadow,
+        border: `4px solid ${theme.woodOutline}`,
+        padding: 24,
+        whiteSpace: 'pre-line',
+        lineHeight: 1.8,
+        cursor: 'pointer',
+        overflow: 'auto',
       }}
-      onClick={close /* clicking the transparent surround also closes */}
+      onClick={close}
     >
-      <div
-        style={{
-          position: 'relative',
-          maxWidth: 520,
-          background: theme.paperBg,
-          boxShadow: theme.cardShadow,
-          border: `4px solid ${theme.woodOutline}`,
-          padding: 24,
-          whiteSpace: 'pre-line',
-          lineHeight: 1.8,
-          cursor: 'pointer',
-        }}
+      <button
         onClick={(e) => {
           e.stopPropagation()
           close()
         }}
+        aria-label="关闭"
+        style={{
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          width: 28,
+          height: 28,
+          background: theme.nameplate,
+          border: `2px solid ${theme.woodOutline}`,
+          color: theme.paperInk,
+          fontSize: 16,
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          lineHeight: 1,
+          padding: 0,
+        }}
       >
-        {/* Explicit × close button in case click-through doesn't register */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            close()
-          }}
-          aria-label="关闭"
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            width: 28,
-            height: 28,
-            background: theme.nameplate,
-            border: `2px solid ${theme.woodOutline}`,
-            color: theme.paperInk,
-            fontSize: 16,
-            fontFamily: 'inherit',
-            cursor: 'pointer',
-            lineHeight: 1,
-            padding: 0,
-          }}
-        >
-          ×
-        </button>
-        {PLACEHOLDER_LETTER}
-        <div style={{ marginTop: 16, opacity: 0.6, fontSize: 12, textAlign: 'right' }}>
-          点击信纸 / 点 × / Esc 关闭
-        </div>
+        ×
+      </button>
+      {PLACEHOLDER_LETTER}
+      <div style={{ marginTop: 16, opacity: 0.6, fontSize: 12, textAlign: 'right' }}>
+        点击信纸 / 点 × / Esc 关闭
       </div>
     </div>
   )

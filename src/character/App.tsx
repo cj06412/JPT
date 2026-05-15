@@ -70,9 +70,12 @@ export function App() {
           setState((cur) => beginHeld(cur, performance.now()))
         }
         if (dragRef.current.movedPast) {
-          // window position should track cursor — set state.x/y to screen coords (top-left)
-          // and main process will setBounds in the rAF loop.
-          setState((cur) => updateHeld(cur, e.screenX - 48 /* half width */, e.screenY - 64 /* half height */))
+          // window position tracks cursor. tick() is a no-op in held mode, so the rAF
+          // loop won't push position via IPC — do it here directly.
+          const newX = e.screenX - 48 // half width
+          const newY = e.screenY - 64 // half height
+          setState((cur) => updateHeld(cur, newX, newY))
+          window.jpt.send('character:set-position', newX, newY)
           return
         }
       }

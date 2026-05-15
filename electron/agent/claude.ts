@@ -20,6 +20,7 @@ export class ClaudeSession implements AgentSession {
   private msgs: AgentMessage[] = []
   private cb: Partial<AgentSessionCallbacks> = {}
   private stderrBuf = ''
+  private readyFired = false
 
   constructor(private workdir: string) {}
 
@@ -33,6 +34,7 @@ export class ClaudeSession implements AgentSession {
 
   async start(): Promise<void> {
     if (this.running || this.proc) return // idempotent — don't orphan an existing child
+    this.readyFired = false
 
     const binary = resolveClaudePath()
     if (!binary) {
@@ -137,8 +139,17 @@ export class ClaudeSession implements AgentSession {
   private handleEvent(ev: Record<string, unknown>): void {
     const type = ev.type as string
 
-    if (type === 'system' && ev.subtype === 'init') {
+    // First stdout event = session is alive. Claude CLI 2.1.x emits
+    // `system + subtype:hook_started/hook_response` during startup; older
+    // versions emitted `system + subtype:init`. Either way, the very first
+    // event from Claude means the session has spawned and is processing —
+    // safe to unlock the dialog input.
+    if (!this.readyFired) {
+      this.readyFired = true
       this.cb.onSessionReady?.()
+    }
+
+    if (type === 'system' && ev.subtype === 'init') {
       return
     }
 

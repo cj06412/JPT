@@ -113,18 +113,17 @@ export function createSettingsWindow(): BrowserWindow {
 }
 
 export function createWelcomeWindow(): BrowserWindow {
-  // Frameless + opaque (NOT transparent). The previous "transparent + frameless"
-  // version hit a Win11 click-routing bug where renderer never saw clicks.
-  // "framed" hit a different OS-level quirk on AOT framed windows and was ugly.
-  // Frameless + opaque solid wood-brown background avoids both quirks AND keeps
-  // the SDV aesthetic. The renderer paints its own × button + Esc handler.
+  // Frameless + transparent: the letter IS the window. No brown surround filler.
+  // Earlier "transparent + frameless" issues turned out to be renderer state bugs
+  // (the Chrome_RenderWidgetHostHWND's WS_EX_TRANSPARENT is normal — clicks bubble
+  // to parent BrowserWindow's WndProc and reach the React renderer).
   const win = new BrowserWindow({
-    width: 720,
-    height: 480,
+    width: 580,
+    height: 440,
     title: 'JPT — 欢迎',
     frame: false,
-    transparent: false,
-    backgroundColor: '#a86930',
+    transparent: true,
+    backgroundColor: '#00000000',
     skipTaskbar: false,
     resizable: false,
     closable: true,
