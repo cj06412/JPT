@@ -168,20 +168,28 @@ export function App() {
   ].filter(Boolean).join(' ')
 
   return (
-    <img
-      src={spriteUrl}
-      alt="JPT"
-      draggable={false}
+    <div
       style={{
         width: 96,
         height: 128,
-        display: 'block',
-        imageRendering: 'pixelated',
+        background: 'red', // visible fallback if the sprite PNG fails to load
         transform,
         transformOrigin: 'center',
         userSelect: 'none',
-        pointerEvents: 'auto', // window-level passthrough is controlled separately
+        pointerEvents: 'auto',
       }}
-    />
+    >
+      <img
+        src={spriteUrl}
+        alt="JPT"
+        draggable={false}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          imageRendering: 'pixelated',
+        }}
+      />
+    </div>
   )
 }

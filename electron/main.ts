@@ -49,14 +49,13 @@ app.whenReady().then(async () => {
   })
 
   // First-run welcome letter — only mark "shown" AFTER the user actually
-  // dismisses the letter (otherwise a stuck welcome window would suppress
-  // itself on relaunch and the user could never see the letter again).
-  // Hide the character/dialog windows while welcome is up so the screen-saver
-  // z-level competition doesn't put the red sprite on top of the letter.
+  // dismisses the letter (otherwise a stuck welcome would suppress itself
+  // on relaunch and the user could never see the letter again).
+  // Don't hide character — welcome is now opaque + centered, character is at
+  // bottom-left; they don't overlap. Hiding broke renderer paint state on
+  // re-show in earlier iterations.
   const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
   if (!fs.existsSync(firstRunMarker)) {
-    windows.character.hide()
-    windows.dialog.hide()
     welcomeWin = createWelcomeWindow()
     welcomeWin.on('closed', () => {
       welcomeWin = null
@@ -65,7 +64,6 @@ app.whenReady().then(async () => {
       } catch (e) {
         console.error('[JPT] failed to write first-run marker:', e)
       }
-      windows?.character.show()
     })
   }
 })

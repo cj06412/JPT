@@ -113,19 +113,21 @@ export function createSettingsWindow(): BrowserWindow {
 }
 
 export function createWelcomeWindow(): BrowserWindow {
-  // Framed + opaque on purpose: transparent + frameless + always-on-top has Win11
-  // quirks where clicks and keyboard input can fail to route to the renderer.
-  // Native title bar guarantees the user can always dismiss via the X button.
+  // Frameless + opaque (NOT transparent). The previous "transparent + frameless"
+  // version hit a Win11 click-routing bug where renderer never saw clicks.
+  // "framed" hit a different OS-level quirk on AOT framed windows and was ugly.
+  // Frameless + opaque solid wood-brown background avoids both quirks AND keeps
+  // the SDV aesthetic. The renderer paints its own × button + Esc handler.
   const win = new BrowserWindow({
     width: 720,
     height: 480,
     title: 'JPT — 欢迎',
-    frame: true,
+    frame: false,
     transparent: false,
-    backgroundColor: '#a86930',  // wood-mid (theme.woodMid) so the letter frames against SDV brown
-    alwaysOnTop: true,
+    backgroundColor: '#a86930',
     skipTaskbar: false,
     resizable: false,
+    closable: true,
     show: true,
     focusable: true,
     webPreferences: {
@@ -139,6 +141,15 @@ export function createWelcomeWindow(): BrowserWindow {
   const y = workArea.y + Math.floor((workArea.height - 480) / 2)
   win.setPosition(x, y)
   win.once('ready-to-show', () => win.focus())
+
+  // Main-process Esc binding as a last resort if the renderer's keydown listener
+  // doesn't reach. Bypasses React entirely.
+  win.webContents.on('before-input-event', (_e, input) => {
+    if (input.type === 'keyDown' && (input.key === 'Escape' || input.key === 'Enter')) {
+      win.close()
+    }
+  })
+
   loadRenderer(win, 'welcome')
   return win
 }
