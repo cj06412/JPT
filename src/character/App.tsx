@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { initialState, tick, CharState, beginHeld, updateHeld, releaseHeld, tapCling } from './state-machine'
 import { fallStep } from './physics'
+import { walkFrame, FRAME_COUNT } from './sprite-sheet'
 import spriteUrl from '../../assets/sprites/jpt-walk.png'
 
 interface WalkBounds {
@@ -169,16 +170,19 @@ export function App() {
     squashActive ? 'scale(1.4, 0.6)' : '',
   ].filter(Boolean).join(' ')
 
+  const frame = walkFrame(state.mode, performance.now())
   return (
     <div
       style={{
         width: 96,
         height: 128,
-        background: 'red',
+        background: 'red', // visible fallback if PNG fails
         transform,
         transformOrigin: 'center',
         userSelect: 'none',
         cursor: 'pointer',
+        overflow: 'hidden',
+        position: 'relative',
       }}
     >
       <img
@@ -186,8 +190,11 @@ export function App() {
         alt="JPT"
         draggable={false}
         style={{
-          width: '100%',
-          height: '100%',
+          position: 'absolute',
+          left: `${-frame * 96}px`,
+          top: 0,
+          width: `${FRAME_COUNT * 96}px`,
+          height: 128,
           display: 'block',
           imageRendering: 'pixelated',
         }}
