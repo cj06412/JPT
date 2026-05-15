@@ -51,7 +51,12 @@ export class ClaudeSession implements AgentSession {
       '--verbose',
       '--dangerously-skip-permissions',
       '--allowed-tools', 'WebFetch,WebSearch,TodoWrite',
-      '--add-dir', this.workdir,
+      // PERSONA ISOLATION — every flag below keeps JPT from inheriting whatever
+      // the user's Claude Code install has accumulated (CLAUDE.md memory files,
+      // skills plugins, MCP servers, hooks). All persona must come from
+      // workdir/CLAUDE.md (loaded automatically because cwd=workdir).
+      '--setting-sources', 'project,local', // skip ~/.claude/settings.json + ~/.claude/CLAUDE.md
+      '--strict-mcp-config',                 // refuse to load user-level MCP servers
       '--model', 'claude-opus-4-7',
     ]
 
