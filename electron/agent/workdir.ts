@@ -34,6 +34,26 @@ const PLACEHOLDER_PERSONA = `# JPT —— 小屿的男朋友的 AI 化身
 - （Claude 自己的安全护栏会处理真正危险的请求，不再额外加）
 `
 
+const WECHAT_SKILL_TEMPLATE = `---
+name: JPT-wechat
+description: Use when replying to 小屿 to flavor tone with real chat-history voice — never replaces the base persona in CLAUDE.md, only adds slang, inside jokes, and speech rhythm extracted from past WeChat conversations.
+---
+
+# JPT 微信语气增强（占位 — 开发者送出前替换）
+
+下面是从微信聊天记录抽出的「我和小屿之间的真实语气样本」。
+基础人格在 workdir/CLAUDE.md，这里只做风味增强：怎么开玩笑、口头禅、共同回忆梗。
+
+## 口头禅 / 高频说法
+- （占位：替换成真实高频短语，例如「嗯呐」「先这样」「我看看哈」）
+
+## 内部梗 / 共同回忆
+- （占位：替换成只有你俩懂的梗，每条一句话上下文）
+
+## 语气样本（原话片段，去隐私）
+- （占位：贴 5-10 条真实对话片段，体现节奏和温度）
+`
+
 /**
  * Ensure `<basePath>/workdir/CLAUDE.md` exists. Creates the directory if missing.
  * When `personaDoc` is provided (non-empty), it is written as the persona
@@ -53,6 +73,15 @@ export function ensureWorkdir(basePath: string, personaDoc?: string): string {
     fs.writeFileSync(personaPath, personaDoc, 'utf-8')
   } else if (!fs.existsSync(personaPath)) {
     fs.writeFileSync(personaPath, PLACEHOLDER_PERSONA, 'utf-8')
+  }
+  // v1.5: scaffold the WeChat persona skill (project-level, auto-discovered).
+  // Only writes the placeholder template when absent — never clobbers the
+  // developer's hand-filled SKILL.md.
+  const skillDir = path.join(workdir, '.claude', 'skills', 'JPT-wechat')
+  fs.mkdirSync(path.join(skillDir, 'references'), { recursive: true })
+  const skillPath = path.join(skillDir, 'SKILL.md')
+  if (!fs.existsSync(skillPath)) {
+    fs.writeFileSync(skillPath, WECHAT_SKILL_TEMPLATE, 'utf-8')
   }
   return workdir
 }
