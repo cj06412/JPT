@@ -68,11 +68,11 @@ export function registerIpcHandlers(
     windows.character.setIgnoreMouseEvents(passthrough, { forward: passthrough })
   })
 
-  // Character → main: position update
+  // Character → main: position update.
+  // setBounds (not setPosition) — Electron on Win11 with transparent windows has a known issue
+  // where setPosition silently grows the window by 1px on each call. setBounds with explicit
+  // width/height every frame prevents the drift.
   ipcMain.on('character:set-position', (_event, x: number, y: number) => {
-    // setBounds (not setPosition) — Electron on Win11 with transparent windows has a known issue
-    // where setPosition silently grows the window by 1px on each call. setBounds with explicit
-    // width/height every frame prevents the drift.
     windows.character.setBounds({ x: Math.round(x), y: Math.round(y), width: CHARACTER_W, height: CHARACTER_H })
   })
 

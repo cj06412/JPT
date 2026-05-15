@@ -18,7 +18,11 @@ const CLING_SNAP_PX = 30
 export function App() {
   const [state, setState] = useState<CharState>(() => initialState())
   const stateRef = useRef(state)
-  stateRef.current = state
+  // Sync stateRef via useEffect so it updates AFTER React commits new state.
+  // Render-phase mutation (`stateRef.current = state` directly in render body)
+  // was unreliable under React 19 + StrictMode — stateRef sometimes pointed
+  // to a stale value the rAF loop kept reading.
+  useEffect(() => { stateRef.current = state }, [state])
   const boundsRef = useRef<WalkBounds | null>(null)
 
   const alphaMap = useAlphaMap(spriteUrl)
@@ -116,7 +120,10 @@ export function App() {
     }
   }, [])
 
-  // rAF tick loop — drives walk + fall integration + IPC position updates
+  // rAF tick loop — drives walk + fall integration + IPC position updates.
+  // Uses setState(updater) form so it composes correctly with the bounds-fetch's
+  // own setState — a plain setState(next) here would overwrite bounds-fetch's
+  // y-update with a stale y from `cur`, leaving the character walking at y=0.
   useEffect(() => {
     let raf = 0
     let last = performance.now()
@@ -124,8 +131,12 @@ export function App() {
       const dt = now - last
       last = now
       const bounds = boundsRef.current
-      const cur = stateRef.current
-      if (bounds) {
+      if (!bounds) {
+        raf = requestAnimationFrame(loop)
+        return
+      }
+      let positionToSend: { x: number; y: number } | null = null
+      setState((cur) => {
         let next = cur
         if (cur.mode === 'fall') {
           const r = fallStep({
@@ -148,9 +159,13 @@ export function App() {
           })
         }
         if (next !== cur) {
-          setState(next)
-          window.jpt.send('character:set-position', next.x, next.y)
+          positionToSend = { x: next.x, y: next.y }
+          return next
         }
+        return cur
+      })
+      if (positionToSend) {
+        window.jpt.send('character:set-position', (positionToSend as { x: number; y: number }).x, (positionToSend as { x: number; y: number }).y)
       }
       raf = requestAnimationFrame(loop)
     }
