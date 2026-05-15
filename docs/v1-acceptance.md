@@ -9,17 +9,49 @@ Stage logs:
 ## Acceptance criteria
 
 - [x] All 37 unit tests pass (`npm test`) — verified at T21
-- [ ] Stage 1 GUI behaviors verified (see Stage 1 log; user runs `npm run dev`)
-- [ ] Stage 2 dialog visuals verified (see Stage 2 log)
-- [ ] Settings window opens, saves, persists across restart
+- [x] Stage 1 GUI behaviors verified — walk / drag / cling / fall / squash all
+      work after the post-v1 GUI bug-fight (commits 570ab0e..aea5bc5)
+- [x] Stage 2 dialog visuals verified — SDV frame + paper + portrait + Zpix +
+      streaming markdown render correctly
+- [x] Dialog ↔ claude streaming works end-to-end with persona isolation
+- [x] Character freezes while dialog open, resumes on close (aea5bc5)
+- [ ] Settings window opens, saves, persists across restart — user confirmed OK
 - [ ] History JSONL files appear in %APPDATA%\jpt\history\YYYY-MM-DD.jsonl
 - [ ] Tray icon visible; menu (talk / settings / updates / quit) functional
-- [ ] First-run welcome letter appears once and not on subsequent launches
-- [ ] `npm run build:installer` produces release/JPT-Setup-1.0.0.exe
-- [ ] Installer runs and installs to %LOCALAPPDATA%\Programs\JPT (or chosen path)
+- [x] `npm run build:installer` produces release/JPT-Setup-1.0.0.exe — verified
+      2026-05-15, 81 MB, with latest.yml + .blockmap
+- [ ] Installer runs and installs to chosen path (USER must test the .exe)
 - [ ] Installed app launches and runs end-to-end identically to dev mode
 - [ ] Memory < 200 MB resident (Task Manager check)
-- [ ] Installer size < 120 MB
+- [x] Installer size < 120 MB — 81 MB ✓
+
+## electron-builder cache workaround (Windows, no admin / no Developer Mode)
+
+On a Windows machine without admin rights or Developer Mode, the first
+`npm run build:installer` fails twice on electron-builder's
+download-then-rename pattern:
+
+1. **winCodeSign** — 7-Zip can't create the darwin .dylib symlinks
+   (`Cannot create symbolic link : 客户端没有所需的特权`). macOS-only;
+   irrelevant to a Windows NSIS build.
+2. **nsis / nsis-resources** — `rename ... : The system cannot move the
+   file to a different disk drive` then `ENOENT elevate.exe`, and later
+   `Plugin not found, cannot call UAC::_`.
+
+Fix (one-time; the cache persists afterward): manually populate
+`%LOCALAPPDATA%\electron-builder\Cache\` —
+
+```
+# winCodeSign — extract excluding the 2 macOS symlinks
+7za x winCodeSign-2.6.0.7z -o<cache>\winCodeSign\winCodeSign-2.6.0 \
+    -xr!libcrypto.dylib -xr!libssl.dylib
+# nsis-3.0.4.1 — extract, then move all contents into a nsis-3.0.4.1\ subdir
+# nsis-resources-3.4.1 — extract into nsis-resources-3.4.1\
+```
+
+Archives: github.com/electron-userland/electron-builder-binaries/releases.
+Once these three cache dirs exist, the build completes cleanly. Enabling
+Windows Developer Mode would also fix #1 without the manual step.
 
 ## Gift-ship checklist (do these BEFORE handing the .exe to 小屿)
 
