@@ -123,6 +123,14 @@ export function registerIpcHandlers(
       windows.dialog.webContents.send('dialog:error', msg)
       history.append({ ts: Date.now(), role: 'error', text: msg })
     },
+    onToolUse: (tool, summary) => {
+      windows.dialog.webContents.send('dialog:tool-use', { tool, summary })
+      history.append({ ts: Date.now(), role: 'toolUse', tool, summary })
+    },
+    onToolResult: (summary, isError) => {
+      windows.dialog.webContents.send('dialog:tool-result', { summary, isError })
+      history.append({ ts: Date.now(), role: 'toolResult', summary, isError })
+    },
     onProcessExit: () => {
       sessionReady = false
       // ClaudeSession already surfaces non-zero exits via onError with the

@@ -5,11 +5,11 @@ import { PortraitPanel } from './PortraitPanel'
 import { InputBar } from './InputBar'
 import { Markdown } from './markdown'
 import { theme } from '@shared/theme'
+import { ToolUseCard } from './ToolUseCard'
 
-interface Msg {
-  role: 'user' | 'assistant' | 'error'
-  text: string
-}
+type Msg =
+  | { role: 'user' | 'assistant' | 'error'; text: string }
+  | { role: 'tool'; tool: string; summary: string; result?: string; isError?: boolean }
 
 export function App() {
   const [msgs, setMsgs] = useState<Msg[]>([])
@@ -55,7 +55,26 @@ export function App() {
       setMsgs((prev) => [...prev, { role: 'error', text: msg }])
       setBusy(false)
     })
-    return () => { offToken(); offComplete(); offError() }
+    const offToolUse = window.jpt.on('dialog:tool-use', (...args: unknown[]) => {
+      const { tool, summary } = args[0] as { tool: string; summary: string }
+      setMsgs((prev) => [...prev, { role: 'tool', tool, summary }])
+    })
+    const offToolResult = window.jpt.on('dialog:tool-result', (...args: unknown[]) => {
+      const { summary, isError } = args[0] as { summary: string; isError: boolean }
+      setMsgs((prev) => {
+        // Attach the result to the most recent tool card lacking one.
+        for (let i = prev.length - 1; i >= 0; i--) {
+          const m = prev[i]
+          if (m.role === 'tool' && m.result === undefined) {
+            const next = [...prev]
+            next[i] = { ...m, result: summary, isError }
+            return next
+          }
+        }
+        return [...prev, { role: 'tool', tool: '🔧', summary: '', result: summary, isError }]
+      })
+    })
+    return () => { offToken(); offComplete(); offError(); offToolUse(); offToolResult() }
   }, [])
 
   useEffect(() => {
@@ -79,17 +98,22 @@ export function App() {
           {msgs.length === 0 && (
             <div style={{ color: theme.paperInkFaded }}>说点什么试试…（Esc 关闭）</div>
           )}
-          {msgs.map((m, i) => (
-            <div
-              key={i}
-              style={{ marginBottom: 8, color: m.role === 'error' ? theme.error : theme.paperInk }}
-            >
-              <strong>
-                {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
-              </strong>{' '}
-              {m.role === 'assistant' ? <Markdown text={m.text} /> : <span>{m.text}</span>}
-            </div>
-          ))}
+          {msgs.map((m, i) => {
+            if (m.role === 'tool') {
+              return <ToolUseCard key={i} tool={m.tool} summary={m.summary} result={m.result} isError={m.isError} />
+            }
+            return (
+              <div
+                key={i}
+                style={{ marginBottom: 8, color: m.role === 'error' ? theme.error : theme.paperInk }}
+              >
+                <strong>
+                  {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
+                </strong>{' '}
+                {m.role === 'assistant' ? <Markdown text={m.text} /> : <span>{m.text}</span>}
+              </div>
+            )
+          })}
         </PaperPanel>
         <PortraitPanel name="JPT" />
       </div>
