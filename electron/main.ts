@@ -51,13 +51,14 @@ app.whenReady().then(async () => {
   // First-run welcome letter — only mark "shown" AFTER the user actually
   // dismisses the letter (otherwise a stuck welcome would suppress itself
   // on relaunch and the user could never see the letter again).
-  // Hide the character + dialog windows while welcome is up — welcome is
-  // transparent so character behind it would show through, ruining the
-  // letter-floating-on-desktop look.
+  // Make character invisible via opacity (NOT hide()) during welcome — hide()
+  // pauses Chromium's renderer for transparent windows in Win11, and after
+  // show() the renderer never repaints (window stays solid-alpha-zero).
+  // setOpacity(0) keeps the renderer running, just makes the window
+  // visually invisible and non-interactive.
   const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
   if (!fs.existsSync(firstRunMarker)) {
-    windows.character.hide()
-    windows.dialog.hide()
+    windows.character.setOpacity(0)
     welcomeWin = createWelcomeWindow()
     welcomeWin.on('closed', () => {
       welcomeWin = null
@@ -66,7 +67,7 @@ app.whenReady().then(async () => {
       } catch (e) {
         console.error('[JPT] failed to write first-run marker:', e)
       }
-      windows?.character.show()
+      windows?.character.setOpacity(1)
     })
   }
 })
