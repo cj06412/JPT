@@ -1,8 +1,33 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
+import fs from 'node:fs'
 import path from 'node:path'
+
+// Copy electron/preload.cjs.js → dist-electron/preload.js verbatim.
+// Avoids vite-plugin-electron's dual-build race where the ESM output sometimes
+// overwrites the CJS one, breaking Electron's sandboxed preload.
+function staticPreloadPlugin(): Plugin {
+  const src = path.resolve(__dirname, 'electron/preload.cjs.js')
+  const dst = path.resolve(__dirname, 'dist-electron/preload.js')
+  const copy = () => {
+    fs.mkdirSync(path.dirname(dst), { recursive: true })
+    fs.copyFileSync(src, dst)
+  }
+  return {
+    name: 'jpt-static-preload',
+    configResolved: copy,
+    buildStart: copy,
+    configureServer(server) {
+      copy()
+      server.watcher.add(src)
+      server.watcher.on('change', (file) => {
+        if (path.resolve(file) === src) copy()
+      })
+    },
+  }
+}
 
 export default defineConfig({
   resolve: {
@@ -24,26 +49,8 @@ export default defineConfig({
           },
         },
       },
-      {
-        entry: 'electron/preload.ts',
-        onstart(args) {
-          args.reload()
-        },
-        vite: {
-          build: {
-            outDir: 'dist-electron',
-            lib: {
-              entry: 'electron/preload.ts',
-              formats: ['cjs'],
-              fileName: () => 'preload.js',
-            },
-            rollupOptions: {
-              external: ['electron'],
-            },
-          },
-        },
-      },
     ]),
+    staticPreloadPlugin(),
     renderer(),
   ],
   build: {
