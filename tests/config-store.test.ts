@@ -28,6 +28,7 @@ describe('ConfigStore', () => {
     expect(snap.fontSize).toBe('medium')
     expect(snap.soundsEnabled).toBe(true)
     expect(snap.launchAtStartup).toBe(true)
+    expect(snap.proactiveMessages).toBe(false)
   })
 
   it('applies partial updates without dropping other fields', () => {

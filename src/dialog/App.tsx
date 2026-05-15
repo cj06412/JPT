@@ -96,7 +96,11 @@ export function App() {
         return [...prev, { role: 'tool', tool: '🔧', summary: '', result: summary, isError }]
       })
     })
-    return () => { offToken(); offComplete(); offError(); offToolUse(); offToolResult() }
+    const offProactive = window.jpt.on('dialog:proactive', (...a: unknown[]) => {
+      setMsgs((p) => [...p, { role: 'assistant', text: String(a[0]) }])
+      setExpression('smile')
+    })
+    return () => { offToken(); offComplete(); offError(); offToolUse(); offToolResult(); offProactive() }
   }, [])
 
   useEffect(() => {

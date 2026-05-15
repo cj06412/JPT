@@ -25,6 +25,7 @@ export class ConfigStore {
       soundsEnabled: this.store.get('soundsEnabled', DEFAULT_CONFIG.soundsEnabled)!,
       launchAtStartup: this.store.get('launchAtStartup', DEFAULT_CONFIG.launchAtStartup)!,
       personaDoc: this.store.get('personaDoc', DEFAULT_CONFIG.personaDoc)!,
+      proactiveMessages: this.store.get('proactiveMessages', DEFAULT_CONFIG.proactiveMessages)!,
     }
   }
 

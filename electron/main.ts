@@ -10,6 +10,7 @@ import { ConfigStore } from './config-store'
 import { HistoryStore } from './history-store'
 import { createTray, trayIconPath } from './tray'
 import { setupAutoUpdates, manualCheck } from './updater'
+import { pickProactive, shouldFire } from './proactive'
 import type { ConfigSnapshot } from '../src/shared/config'
 
 // Windows 11 + transparent BrowserWindow + GPU acceleration = renderer paints but compositor
@@ -57,6 +58,20 @@ app.whenReady().then(async () => {
   })
 
   await session.start()
+
+  // Proactive companionship: every 10 min check whether a nudge is due.
+  // Only pushed when the dialog is already open (never pop a window at the
+  // user unprompted — half-asleep midnight surprises are not the vibe).
+  let lastProactive = Date.now()
+  setInterval(() => {
+    const cfg = configStore.snapshot()
+    if (!shouldFire(cfg.proactiveMessages, lastProactive, Date.now())) return
+    if (!windows || !windows.dialog.isVisible()) return
+    const msg = pickProactive(new Date().getHours())
+    if (!msg) return
+    lastProactive = Date.now()
+    windows.dialog.webContents.send('dialog:proactive', msg.text)
+  }, 10 * 60_000)
 
   setupAutoUpdates()
 
