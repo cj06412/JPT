@@ -1,5 +1,9 @@
 export type CharMode = 'idle' | 'walk' | 'cling' | 'held' | 'fall'
 
+/** Stand still for 10s, then walk for 5s, repeat (spec: 站 10s 走 5s). */
+export const IDLE_MS = 10_000
+export const WALK_MS = 5_000
+
 export interface CharState {
   mode: CharMode
   x: number              // pixel position (top-left of window in DIP)
@@ -59,31 +63,30 @@ export function tick(state: CharState, input: TickInput): CharState {
   }
 
   if (state.mode === 'idle') {
+    // Unset timer (fresh start) — arm a 10s stand window without walking yet.
+    if (state.pauseUntilMs === 0) {
+      return { ...state, pauseUntilMs: input.now + IDLE_MS }
+    }
+    // Stand window elapsed (and any landing-squash finished) → walk for 5s.
     if (input.now >= state.pauseUntilMs && state.squashUntilMs <= input.now) {
-      return { ...state, mode: 'walk' }
+      return { ...state, mode: 'walk', pauseUntilMs: input.now + WALK_MS }
     }
     return state
   }
 
   // mode === 'walk'
+  // Walk window elapsed → stand for 10s.
+  if (input.now >= state.pauseUntilMs) {
+    return { ...state, mode: 'idle', pauseUntilMs: input.now + IDLE_MS }
+  }
   const nextX = state.x + state.facing * state.speed * input.dt
+  // Hitting a bound flips facing but keeps walking — the character only stops
+  // when the 5s walk window ends, not at the wall.
   if (state.facing === 1 && nextX >= input.rightBound) {
-    return {
-      ...state,
-      mode: 'idle',
-      x: input.rightBound,
-      facing: -1,
-      pauseUntilMs: input.now + randomPauseMs(),
-    }
+    return { ...state, x: input.rightBound, facing: -1 }
   }
   if (state.facing === -1 && nextX <= input.leftBound) {
-    return {
-      ...state,
-      mode: 'idle',
-      x: input.leftBound,
-      facing: 1,
-      pauseUntilMs: input.now + randomPauseMs(),
-    }
+    return { ...state, x: input.leftBound, facing: 1 }
   }
   return { ...state, x: nextX }
 }
@@ -131,13 +134,6 @@ export function tapCling(state: CharState, now: number, floorY: number): CharSta
     ...state,
     mode: 'idle',
     y: floorY,
-    pauseUntilMs: now + randomPauseMs(),
+    pauseUntilMs: now + IDLE_MS,
   }
-}
-
-function randomPauseMs(): number {
-  // 0.3–2s 随机停顿。Spec wants 0.5–14s for the "casual stroll" feel; with the
-  // placeholder red square it just looks broken when the character pauses for
-  // 14s. Shorten for v1; widen back in v1.5 once we have proper idle animation.
-  return 300 + Math.random() * 1700
 }

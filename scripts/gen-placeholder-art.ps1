@@ -1,36 +1,21 @@
-# One-shot script to (re)generate red-square placeholder art so the codebase runs
-# without the real GPT-Image-generated sprites. Run from repo root:
+# One-shot script to (re)generate placeholder art so the codebase runs without
+# the real GPT-Image-generated sprites. Run from repo root:
 #   powershell -ExecutionPolicy Bypass -File scripts/gen-placeholder-art.ps1
-# Replace these PNGs with real art before gifting.
+# WARNING: this overwrites everything in assets/sprites with placeholders —
+# only run it when you want to reset to placeholders. Replace with real art
+# (jpt-stand1/2, jpt-walk1..4, jpt-portrait, 3 expressions) before gifting.
 param()
 
 Add-Type -AssemblyName System.Drawing
 
-function Save-RedSquare {
-  param([int]$w, [int]$h, [string]$path)
-  $bmp = New-Object System.Drawing.Bitmap $w, $h
-  $g = [System.Drawing.Graphics]::FromImage($bmp)
-  $g.Clear([System.Drawing.Color]::FromArgb(255, 240, 60, 60))
+function Save-Square {
+  param([int]$size, [int]$r, [int]$g, [int]$b, [string]$path)
+  $bmp = New-Object System.Drawing.Bitmap $size, $size
+  $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+  $gfx.Clear([System.Drawing.Color]::FromArgb(255, $r, $g, $b))
   $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
-  $g.Dispose(); $bmp.Dispose()
-  Write-Host "wrote $path ($w x $h)"
-}
-
-# v1.5: walk sprite is now a 4-frame horizontal sheet (each frame 96x128 -> 384x128).
-# Placeholder = 4 red squares with slightly different brightness so frame cycling is visible.
-function Save-WalkSheet {
-  param([string]$path)
-  $bmp = New-Object System.Drawing.Bitmap 384, 128
-  $g = [System.Drawing.Graphics]::FromImage($bmp)
-  $shades = @(60, 90, 60, 30)
-  for ($i = 0; $i -lt 4; $i++) {
-    $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 240, $shades[$i], $shades[$i]))
-    $g.FillRectangle($brush, ($i*96), 0, 96, 128)
-    $brush.Dispose()
-  }
-  $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
-  $g.Dispose(); $bmp.Dispose()
-  Write-Host "wrote $path (384x128, 4 frames)"
+  $gfx.Dispose(); $bmp.Dispose()
+  Write-Host "wrote $path (${size}x${size} rgb $r,$g,$b)"
 }
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -38,14 +23,23 @@ New-Item -Force -ItemType Directory "$root\assets\sprites" | Out-Null
 New-Item -Force -ItemType Directory "$root\assets\fonts" | Out-Null
 New-Item -Force -ItemType Directory "$root\assets\icons" | Out-Null
 
-Save-WalkSheet "$root\assets\sprites\jpt-walk.png"
-Save-RedSquare 256 256 "$root\assets\sprites\jpt-portrait.png"
-Save-RedSquare 256 256 "$root\assets\sprites\jpt-portrait-smile.png"
-Save-RedSquare 256 256 "$root\assets\sprites\jpt-portrait-think.png"
-Save-RedSquare 256 256 "$root\assets\sprites\jpt-portrait-confused.png"
+# Behaviour model: stand (2-frame breathing) + walk (4-frame cycle), each frame
+# a SEPARATE square image (matches the real GPT-Image workflow — one file per
+# frame). Slightly different tints so frame cycling is visible with placeholders.
+Save-Square 256 240 70 70  "$root\assets\sprites\jpt-stand1.png"
+Save-Square 256 240 95 95  "$root\assets\sprites\jpt-stand2.png"
+Save-Square 256 240 60 60  "$root\assets\sprites\jpt-walk1.png"
+Save-Square 256 240 100 60 "$root\assets\sprites\jpt-walk2.png"
+Save-Square 256 240 60 100 "$root\assets\sprites\jpt-walk3.png"
+Save-Square 256 240 30 30  "$root\assets\sprites\jpt-walk4.png"
 
-# Silent placeholder mp3s (44 bytes — valid empty MPEG frame). Real CC0 SDV
-# sounds replace these later (see docs note in Task 9).
+Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait.png"
+Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait-smile.png"
+Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait-think.png"
+Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait-confused.png"
+
+# Silent placeholder mp3s (44 bytes — valid empty MPEG frame). Real CC0 sounds
+# replace these later (see docs note in the v1.5 plan / Task 12).
 New-Item -Force -ItemType Directory "$root\assets\sounds" | Out-Null
 $silent = [byte[]](0xFF,0xFB,0x90,0x64) + (New-Object byte[] 40)
 foreach ($n in @('complete','click','type')) {

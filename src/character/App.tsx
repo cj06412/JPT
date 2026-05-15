@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { initialState, tick, CharState, beginHeld, updateHeld, releaseHeld, tapCling } from './state-machine'
+import { initialState, tick, CharState, beginHeld, updateHeld, releaseHeld, tapCling, IDLE_MS } from './state-machine'
 import { fallStep } from './physics'
-import { walkFrame, FRAME_COUNT } from './sprite-sheet'
-import spriteUrl from '../../assets/sprites/jpt-walk.png'
+import { spriteFrame } from './sprite-sheet'
+import stand1Url from '../../assets/sprites/jpt-stand1.png'
+import stand2Url from '../../assets/sprites/jpt-stand2.png'
+import walk1Url from '../../assets/sprites/jpt-walk1.png'
+import walk2Url from '../../assets/sprites/jpt-walk2.png'
+import walk3Url from '../../assets/sprites/jpt-walk3.png'
+import walk4Url from '../../assets/sprites/jpt-walk4.png'
+
+const STAND_FRAMES = [stand1Url, stand2Url]
+const WALK_FRAMES = [walk1Url, walk2Url, walk3Url, walk4Url]
 
 interface WalkBounds {
   leftBound: number
@@ -143,7 +151,7 @@ export function App() {
         }, now)
         next = { ...cur, x: r.x, y: r.y }
         if (r.landed) {
-          next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + 300, squashUntilMs: now + 200 }
+          next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + IDLE_MS, squashUntilMs: now + 200 }
         }
       } else {
         next = tick(cur, {
@@ -175,11 +183,11 @@ export function App() {
     squashActive ? 'scale(1.4, 0.6)' : '',
   ].filter(Boolean).join(' ')
 
-  const frame = walkFrame(state.mode, performance.now())
-  const animation =
-    state.mode === 'idle' ? 'jpt-breathe 2.6s ease-in-out infinite'
-    : state.mode === 'cling' ? 'jpt-sway 1.8s ease-in-out infinite'
-    : 'none'
+  // Per-frame separate images: idle breathes between 2 stand frames, walk
+  // cycles 4 frames. No CSS breathe — the 2-frame stand art carries it.
+  const sf = spriteFrame(state.mode, performance.now())
+  const frameSrc = sf.set === 'walk' ? WALK_FRAMES[sf.index] : STAND_FRAMES[sf.index]
+  const animation = state.mode === 'cling' ? 'jpt-sway 1.8s ease-in-out infinite' : 'none'
   return (
     <div
       style={{
@@ -195,32 +203,23 @@ export function App() {
         style={{
           width: '100%',
           height: '100%',
-          background: 'red',
-          overflow: 'hidden',
-          position: 'relative',
-          animation,          // breathe / sway — translate only, no transform clash
+          animation,          // cling sway — translate/rotate only, no transform clash
         }}
       >
         <img
-          src={spriteUrl}
+          src={frameSrc}
           alt="JPT"
           draggable={false}
           style={{
-            position: 'absolute',
-            left: `${-frame * 96}px`,
-            top: 0,
-            width: `${FRAME_COUNT * 96}px`,
-            height: 128,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain', // square source art, never distorted in the 96x128 box
             display: 'block',
             imageRendering: 'pixelated',
           }}
         />
       </div>
       <style>{`
-        @keyframes jpt-breathe {
-          0%,100% { transform: translateY(0); }
-          50%     { transform: translateY(-2px); }
-        }
         @keyframes jpt-sway {
           0%,100% { transform: translateX(0) rotate(0deg); }
           50%     { transform: translateX(1px) rotate(2deg); }

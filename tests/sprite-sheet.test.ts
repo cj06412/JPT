@@ -1,23 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { walkFrame } from '../src/character/sprite-sheet'
+import { spriteFrame } from '../src/character/sprite-sheet'
 
-describe('walkFrame', () => {
-  it('idle always shows frame 0', () => {
-    expect(walkFrame('idle', 0)).toBe(0)
-    expect(walkFrame('idle', 999999)).toBe(0)
+describe('spriteFrame', () => {
+  it('idle breathes between 2 stand frames every 900ms', () => {
+    expect(spriteFrame('idle', 0)).toEqual({ set: 'stand', index: 0 })
+    expect(spriteFrame('idle', 899)).toEqual({ set: 'stand', index: 0 })
+    expect(spriteFrame('idle', 900)).toEqual({ set: 'stand', index: 1 })
+    expect(spriteFrame('idle', 1799)).toEqual({ set: 'stand', index: 1 })
+    expect(spriteFrame('idle', 1800)).toEqual({ set: 'stand', index: 0 })
   })
-  it('held / cling / fall show frame 0 (no walk cycle)', () => {
-    expect(walkFrame('held', 12345)).toBe(0)
-    expect(walkFrame('cling', 12345)).toBe(0)
-    expect(walkFrame('fall', 12345)).toBe(0)
+
+  it('walk cycles 4 frames every 120ms (480ms full cycle)', () => {
+    expect(spriteFrame('walk', 0)).toEqual({ set: 'walk', index: 0 })
+    expect(spriteFrame('walk', 119)).toEqual({ set: 'walk', index: 0 })
+    expect(spriteFrame('walk', 120)).toEqual({ set: 'walk', index: 1 })
+    expect(spriteFrame('walk', 240)).toEqual({ set: 'walk', index: 2 })
+    expect(spriteFrame('walk', 360)).toEqual({ set: 'walk', index: 3 })
+    expect(spriteFrame('walk', 480)).toEqual({ set: 'walk', index: 0 })
+    expect(spriteFrame('walk', 600)).toEqual({ set: 'walk', index: 1 })
   })
-  it('walk cycles 0..3 every 120ms each (480ms full cycle)', () => {
-    expect(walkFrame('walk', 0)).toBe(0)
-    expect(walkFrame('walk', 119)).toBe(0)
-    expect(walkFrame('walk', 120)).toBe(1)
-    expect(walkFrame('walk', 240)).toBe(2)
-    expect(walkFrame('walk', 360)).toBe(3)
-    expect(walkFrame('walk', 480)).toBe(0)
-    expect(walkFrame('walk', 600)).toBe(1)
+
+  it('cling / held / fall show the static stand frame 0', () => {
+    expect(spriteFrame('cling', 12345)).toEqual({ set: 'stand', index: 0 })
+    expect(spriteFrame('held', 12345)).toEqual({ set: 'stand', index: 0 })
+    expect(spriteFrame('fall', 12345)).toEqual({ set: 'stand', index: 0 })
   })
 })

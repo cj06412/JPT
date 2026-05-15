@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   tick, initialState, CharState,
   beginHeld, updateHeld, releaseHeld, tapCling,
+  IDLE_MS, WALK_MS,
 } from '../src/character/state-machine'
 
 describe('state-machine', () => {
@@ -11,21 +12,36 @@ describe('state-machine', () => {
     expect(s.facing).toBe(1)
   })
 
-  it('idle transitions to walk after pause expires', () => {
+  it('idle with unset timer (pauseUntilMs 0) arms a 10s stand window, does not walk yet', () => {
+    const s = initialState() // pauseUntilMs === 0
+    const out = tick(s, { now: 5000, dt: 16, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
+    expect(out.mode).toBe('idle')
+    expect(out.pauseUntilMs).toBe(5000 + IDLE_MS)
+  })
+
+  it('idle transitions to walk after the 10s stand window expires, arming a 5s walk window', () => {
     const s0 = { ...initialState(), pauseUntilMs: 100 }
     const s1 = tick(s0, { now: 50, dt: 16, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
     expect(s1.mode).toBe('idle')
     const s2 = tick(s0, { now: 150, dt: 16, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
     expect(s2.mode).toBe('walk')
+    expect(s2.pauseUntilMs).toBe(150 + WALK_MS)
   })
 
-  it('walk advances x by speed * dt in facing direction', () => {
+  it('walk returns to idle after the 5s walk window elapses, arming a 10s stand window', () => {
+    const s: CharState = { ...initialState(), mode: 'walk', x: 500, facing: 1, pauseUntilMs: 1000 }
+    const out = tick(s, { now: 1000, dt: 16, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
+    expect(out.mode).toBe('idle')
+    expect(out.pauseUntilMs).toBe(1000 + IDLE_MS)
+  })
+
+  it('walk advances x by speed * dt in facing direction (within the walk window)', () => {
     const s: CharState = {
       mode: 'walk',
       x: 100,
       y: 0,
       facing: 1,
-      pauseUntilMs: 0,
+      pauseUntilMs: 10_000_000, // walk window far in the future
       speed: 0.05, // px per ms
       fallStartMs: 0,
       fallStartX: 0,
@@ -35,15 +51,16 @@ describe('state-machine', () => {
     }
     const next = tick(s, { now: 1000, dt: 100, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
     expect(next.x).toBeCloseTo(105, 5)
+    expect(next.mode).toBe('walk')
   })
 
-  it('walk reverses facing at right bound', () => {
+  it('walk reverses facing at right bound but keeps walking (does not idle early)', () => {
     const s: CharState = {
       mode: 'walk',
       x: 990,
       y: 0,
       facing: 1,
-      pauseUntilMs: 0,
+      pauseUntilMs: 10_000_000,
       speed: 0.05,
       fallStartMs: 0,
       fallStartX: 0,
@@ -53,16 +70,17 @@ describe('state-machine', () => {
     }
     const next = tick(s, { now: 1000, dt: 1000, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
     expect(next.facing).toBe(-1)
-    expect(next.mode).toBe('idle')
+    expect(next.mode).toBe('walk')
+    expect(next.x).toBe(1000)
   })
 
-  it('walk reverses facing at left bound', () => {
+  it('walk reverses facing at left bound but keeps walking', () => {
     const s: CharState = {
       mode: 'walk',
       x: 10,
       y: 0,
       facing: -1,
-      pauseUntilMs: 0,
+      pauseUntilMs: 10_000_000,
       speed: 0.05,
       fallStartMs: 0,
       fallStartX: 0,
@@ -72,7 +90,8 @@ describe('state-machine', () => {
     }
     const next = tick(s, { now: 1000, dt: 1000, leftBound: 0, rightBound: 1000, floorY: 800, rightWall: 1000 })
     expect(next.facing).toBe(1)
-    expect(next.mode).toBe('idle')
+    expect(next.mode).toBe('walk')
+    expect(next.x).toBe(0)
   })
 
   it('beginHeld switches to held mode', () => {
