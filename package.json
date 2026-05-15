@@ -1,12 +1,12 @@
 {
   "name": "jpt",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
     "build:installer": "npm run build && electron-builder --win nsis --x64",
     "test": "vitest run",
     "test:watch": "vitest"

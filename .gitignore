@@ -17,6 +17,22 @@ pnpm-debug.log*
 # Vite
 .vite/
 
+# tsc emit guard — Vite/esbuild does the real bundling; tsc is a type-check
+# gate only (build script uses `tsc --noEmit`). Never commit in-place compiled
+# output next to TS sources if a stray `tsc -b` ever emits it.
+src/**/*.js
+src/**/*.d.ts
+electron/**/*.js
+electron/**/*.d.ts
+tests/**/*.js
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
+# Keep the hand-written static CJS preload (not tsc output).
+!electron/preload.cjs.js
+
 # Local env / secrets
 .env
 .env.local
