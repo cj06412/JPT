@@ -51,14 +51,21 @@ app.whenReady().then(async () => {
   // First-run welcome letter — only mark "shown" AFTER the user actually
   // dismisses the letter (otherwise a stuck welcome would suppress itself
   // on relaunch and the user could never see the letter again).
-  // Make character invisible via opacity (NOT hide()) during welcome — hide()
-  // pauses Chromium's renderer for transparent windows in Win11, and after
-  // show() the renderer never repaints (window stays solid-alpha-zero).
-  // setOpacity(0) keeps the renderer running, just makes the window
-  // visually invisible and non-interactive.
+  // Park character far off-screen during welcome — hide() pauses Chromium's
+  // renderer (won't repaint on show) and setOpacity(0) had the same issue.
+  // Off-screen-but-alive keeps the renderer painting normally; setBounds
+  // back to the real position when welcome closes is just a position update,
+  // not a visibility transition, so it doesn't trigger any paint pause.
+  const OFFSCREEN_X = -2000
   const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
   if (!fs.existsSync(firstRunMarker)) {
-    windows.character.setOpacity(0)
+    const restoreBounds = windows.character.getBounds()
+    windows.character.setBounds({
+      x: OFFSCREEN_X,
+      y: restoreBounds.y,
+      width: restoreBounds.width,
+      height: restoreBounds.height,
+    })
     welcomeWin = createWelcomeWindow()
     welcomeWin.on('closed', () => {
       welcomeWin = null
@@ -67,7 +74,12 @@ app.whenReady().then(async () => {
       } catch (e) {
         console.error('[JPT] failed to write first-run marker:', e)
       }
-      windows?.character.setOpacity(1)
+      windows?.character.setBounds({
+        x: 100,
+        y: restoreBounds.y,
+        width: restoreBounds.width,
+        height: restoreBounds.height,
+      })
     })
   }
 })
