@@ -45,6 +45,17 @@ app.whenReady().then(async () => {
   registerIpcHandlers(windows, session, configStore, historyStore, {
     closeWelcome: () => { welcomeWin?.close() },
   })
+
+  // spec §3.2: clicking outside the dialog closes it. The dialog window
+  // losing focus == user clicked elsewhere. Reuse the same close path as
+  // Esc / character-click-toggle by faking a dialog:close.
+  windows.dialog.on('blur', () => {
+    if (windows && windows.dialog.isVisible()) {
+      windows.dialog.hide()
+      windows.character.webContents.send('character:dialog-visibility', false)
+    }
+  })
+
   await session.start()
 
   setupAutoUpdates()
