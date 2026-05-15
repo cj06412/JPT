@@ -47,6 +47,13 @@ function createCharacterWindow(): BrowserWindow {
       preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
+      // Chromium throttles rAF/setInterval/setTimeout for transparent and
+      // "occluded" windows to ~1Hz. Our character window IS visible but
+      // Chromium can't tell because most pixels are transparent. Without
+      // this flag the walking animation freezes after a few seconds and
+      // unfreezes only when state has accumulated huge dt, causing visible
+      // teleports rather than smooth walking.
+      backgroundThrottling: false,
     },
   })
 

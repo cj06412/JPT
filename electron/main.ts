@@ -17,6 +17,14 @@ import type { ConfigSnapshot } from '../src/shared/config'
 // composition which paints transparent windows correctly. Must be called before whenReady.
 app.disableHardwareAcceleration()
 
+// Chromium throttles rAF / setTimeout / setInterval in "background" or "occluded"
+// renderers. Transparent windows get mis-classified as occluded and tank our
+// walking animation. backgroundThrottling:false on the window is the primary
+// fix; these app-level switches are a belt-and-suspenders backup.
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+
 // We never use Electron's default application menu (File / Edit / View / ...).
 // Strip it globally so framed windows (welcome, settings) don't show the menubar.
 Menu.setApplicationMenu(null)
