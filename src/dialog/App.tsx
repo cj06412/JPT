@@ -36,7 +36,9 @@ export function App() {
 
   useEffect(() => {
     window.jpt.invoke<boolean>('agent:is-ready').then(setReady)
-    const off = window.jpt.on('dialog:session-ready', () => setReady(true))
+    // Payload-aware: onSessionReady sends no arg (-> ready true); slash-clear
+    // sends `false` to disable input while the session respawns.
+    const off = window.jpt.on('dialog:session-ready', (...a: unknown[]) => setReady(a[0] !== false))
     return () => { off() }
   }, [])
 

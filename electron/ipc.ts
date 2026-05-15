@@ -1,5 +1,5 @@
-import { ipcMain, screen, BrowserWindow, app } from 'electron'
-import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow, floorGeometry } from './window-manager'
+import { ipcMain, BrowserWindow, app } from 'electron'
+import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow, floorGeometry, activeDisplay } from './window-manager'
 import { writePersona } from './agent/workdir'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
@@ -28,7 +28,7 @@ export function toggleDialog(windows: JPTWindows) {
     return
   }
   const charBounds = windows.character.getBounds()
-  const { workArea } = screen.getPrimaryDisplay()
+  const { workArea } = activeDisplay()
   let x = charBounds.x + charBounds.width + 10
   let y = charBounds.y - DIALOG_H + charBounds.height
   if (x + DIALOG_W > workArea.x + workArea.width) {
@@ -114,6 +114,11 @@ export function registerIpcHandlers(
   // workdir/CLAUDE.md persona fresh, no history replay).
   ipcMain.on('dialog:slash-clear', async () => {
     session.terminate()
+    // Drop readiness while the new session spawns so the input is disabled
+    // and the user can't fire a message at a dead process (error-flash race).
+    // onSessionReady re-enables it when the fresh session is up.
+    sessionReady = false
+    windows.dialog.webContents.send('dialog:session-ready', false)
     await session.start()
   })
 
