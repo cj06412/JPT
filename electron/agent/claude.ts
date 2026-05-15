@@ -169,6 +169,40 @@ export class ClaudeSession implements AgentSession {
         if (block.type === 'text' && typeof block.text === 'string') {
           this.currentResponseText += block.text
           this.cb.onText?.(block.text)
+        } else if (block.type === 'tool_use' && typeof block.name === 'string') {
+          // Summarize the tool input compactly for the SDV scroll card.
+          const input = block.input as Record<string, unknown> | undefined
+          const summary = summarizeToolInput(block.name, input)
+          this.cb.onToolUse?.(block.name, summary)
+        }
+      }
+      return
+    }
+
+    if (type === 'user') {
+      // Claude streams tool results back as a user-role message whose content
+      // is an array of tool_result blocks.
+      const message = ev.message as { content?: Array<Record<string, unknown>> } | undefined
+      const blocks = message?.content ?? []
+      for (const block of blocks) {
+        if (block.type === 'tool_result') {
+          const isError = block.is_error === true
+          const raw = block.content
+          let summary: string
+          if (typeof raw === 'string') {
+            summary = raw
+          } else if (Array.isArray(raw)) {
+            summary = raw
+              .map((b) => (b && typeof b === 'object' && typeof (b as Record<string, unknown>).text === 'string'
+                ? (b as Record<string, unknown>).text as string
+                : ''))
+              .join('')
+          } else {
+            summary = ''
+          }
+          // Trim to a card-sized blurb.
+          const trimmed = summary.trim().slice(0, 280)
+          this.cb.onToolResult?.(trimmed, isError)
         }
       }
       return
@@ -188,4 +222,17 @@ export class ClaudeSession implements AgentSession {
       return
     }
   }
+}
+
+/**
+ * Compact one-line description of a tool call for the dialog scroll card.
+ * WebSearch → the query; WebFetch → the URL; TodoWrite → "更新进度";
+ * anything else → the tool name.
+ */
+function summarizeToolInput(tool: string, input: Record<string, unknown> | undefined): string {
+  if (!input) return tool
+  if (tool === 'WebSearch' && typeof input.query === 'string') return `搜「${input.query}」`
+  if (tool === 'WebFetch' && typeof input.url === 'string') return `打开 ${input.url}`
+  if (tool === 'TodoWrite') return '更新进度'
+  return tool
 }

@@ -6,6 +6,8 @@ export interface AgentSessionCallbacks {
   onSessionReady: () => void
   onTurnComplete: () => void
   onProcessExit: () => void
+  onToolUse: (tool: string, summary: string) => void
+  onToolResult: (summary: string, isError: boolean) => void
 }
 
 export interface AgentSession {
