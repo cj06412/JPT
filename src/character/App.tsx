@@ -94,37 +94,42 @@ export function App() {
         raf = requestAnimationFrame(loop)
         return
       }
-      let positionToSend: { x: number; y: number } | null = null
-      setState((cur) => {
-        let next = cur
-        if (cur.mode === 'fall') {
-          const r = fallStep({
-            startX: cur.fallStartX,
-            startY: cur.fallStartY,
-            startMs: cur.fallStartMs,
-            vx: cur.fallVx,
-            gravity: GRAVITY,
-            floorY: bounds.floorY,
-          }, now)
-          next = { ...cur, x: r.x, y: r.y }
-          if (r.landed) {
-            next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + 300, squashUntilMs: now + 200 }
-          }
-        } else {
-          next = tick(cur, {
-            now, dt,
-            leftBound: bounds.leftBound, rightBound: bounds.rightBound,
-            floorY: bounds.floorY, rightWall: bounds.rightBound,
-          })
+      // Read stateRef synchronously. Compute next. setState(next) value-form
+      // — earlier we tried updater-form to fix a y-race, but updaters fire at
+      // React commit time AFTER this tick body returns, so any IPC outside
+      // the updater never ran. The y-race is now prevented by clamping y to
+      // bounds.floorY for all non-fall/held modes inside this loop, so even
+      // if stateRef.current.y is stale (e.g. 0 before bounds-fetch commits),
+      // the position sent to main is always correct.
+      const cur = stateRef.current
+      let next = cur
+      if (cur.mode === 'fall') {
+        const r = fallStep({
+          startX: cur.fallStartX,
+          startY: cur.fallStartY,
+          startMs: cur.fallStartMs,
+          vx: cur.fallVx,
+          gravity: GRAVITY,
+          floorY: bounds.floorY,
+        }, now)
+        next = { ...cur, x: r.x, y: r.y }
+        if (r.landed) {
+          next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + 300, squashUntilMs: now + 200 }
         }
-        if (next !== cur) {
-          positionToSend = { x: next.x, y: next.y }
-          return next
+      } else {
+        next = tick(cur, {
+          now, dt,
+          leftBound: bounds.leftBound, rightBound: bounds.rightBound,
+          floorY: bounds.floorY, rightWall: bounds.rightBound,
+        })
+        // Force y to floor for idle / walk — defends against the stale-stateRef y-race
+        if (next.mode === 'idle' || next.mode === 'walk') {
+          if (next.y !== bounds.floorY) next = { ...next, y: bounds.floorY }
         }
-        return cur
-      })
-      if (positionToSend) {
-        window.jpt.send('character:set-position', (positionToSend as { x: number; y: number }).x, (positionToSend as { x: number; y: number }).y)
+      }
+      if (next !== cur) {
+        setState(next)
+        window.jpt.send('character:set-position', next.x, next.y)
       }
       raf = requestAnimationFrame(loop)
     }
