@@ -59,9 +59,13 @@ export class ClaudeSession implements AgentSession {
     // npm-installed claude is a `claude.cmd` shim, so we need shell:true on Windows
     // when the resolved binary is a batch file. Without this, spawn throws EINVAL
     // or hangs silently.
+    // cwd: this.workdir — Claude Code auto-loads <cwd>/CLAUDE.md as its system
+    // prompt. Running with cwd=workdir ensures the persona placeholder loads,
+    // NOT whatever CLAUDE.md happens to be in the dev repo / app install dir.
     const isBatch = /\.(cmd|bat)$/i.test(binary)
     const proc = spawn(binary, args, {
       env: { ...process.env, TERM: 'dumb' },
+      cwd: this.workdir,
       shell: isBatch,
       windowsHide: true,
       windowsVerbatimArguments: isBatch,
