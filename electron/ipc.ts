@@ -103,6 +103,14 @@ export function registerIpcHandlers(
     session.send(message)
   })
 
+  // Dialog → main: /clear — reset Claude's conversation context.
+  // Cheapest correct way: terminate + restart the session (it re-loads
+  // workdir/CLAUDE.md persona fresh, no history replay).
+  ipcMain.on('dialog:slash-clear', async () => {
+    session.terminate()
+    await session.start()
+  })
+
   // Wire session callbacks → dialog renderer
   session.setCallbacks({
     onSessionReady: () => {

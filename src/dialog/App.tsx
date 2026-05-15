@@ -6,6 +6,7 @@ import { InputBar } from './InputBar'
 import { Markdown } from './markdown'
 import { theme } from '@shared/theme'
 import { ToolUseCard } from './ToolUseCard'
+import { parseSlash, slashHelpText } from './slash'
 
 type Msg =
   | { role: 'user' | 'assistant' | 'error'; text: string }
@@ -85,6 +86,21 @@ export function App() {
   const onSend = () => {
     const text = input.trim()
     if (!text || busy || !ready) return
+    const slash = parseSlash(text)
+    if (slash) {
+      setInput('')
+      if (slash.cmd === 'clear') {
+        setMsgs([])
+        window.jpt.send('dialog:slash-clear')
+      } else if (slash.cmd === 'copy') {
+        const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant') as { text: string } | undefined
+        if (lastAssistant) navigator.clipboard?.writeText(lastAssistant.text).catch(() => {})
+        setMsgs((p) => [...p, { role: 'assistant', text: lastAssistant ? '（已复制上一条回复）' : '（没有可复制的回复）' }])
+      } else {
+        setMsgs((p) => [...p, { role: 'assistant', text: slashHelpText() }])
+      }
+      return
+    }
     setMsgs((p) => [...p, { role: 'user', text }])
     setInput('')
     setBusy(true)
