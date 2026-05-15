@@ -51,21 +51,15 @@ app.whenReady().then(async () => {
   // First-run welcome letter — only mark "shown" AFTER the user actually
   // dismisses the letter (otherwise a stuck welcome would suppress itself
   // on relaunch and the user could never see the letter again).
-  // Park character far off-screen during welcome — hide() pauses Chromium's
-  // renderer (won't repaint on show) and setOpacity(0) had the same issue.
-  // Off-screen-but-alive keeps the renderer painting normally; setBounds
-  // back to the real position when welcome closes is just a position update,
-  // not a visibility transition, so it doesn't trigger any paint pause.
-  const OFFSCREEN_X = -2000
+  // Character window stays visible during welcome. Every attempt to suppress
+  // it (hide / setOpacity(0) / setBounds offscreen) broke Chromium's renderer
+  // state — paint failed entirely OR rAF throttled and never resumed. Since
+  // welcome is small + transparent and lives at screen center while the
+  // character lives at bottom-left, they don't visually conflict much.
+  // v1.5 follow-up: send an IPC to character renderer to render null while
+  // welcome is up — that bypasses all window-state shenanigans.
   const firstRunMarker = path.join(app.getPath('userData'), '.first-run-shown')
   if (!fs.existsSync(firstRunMarker)) {
-    const restoreBounds = windows.character.getBounds()
-    windows.character.setBounds({
-      x: OFFSCREEN_X,
-      y: restoreBounds.y,
-      width: restoreBounds.width,
-      height: restoreBounds.height,
-    })
     welcomeWin = createWelcomeWindow()
     welcomeWin.on('closed', () => {
       welcomeWin = null
@@ -74,12 +68,6 @@ app.whenReady().then(async () => {
       } catch (e) {
         console.error('[JPT] failed to write first-run marker:', e)
       }
-      windows?.character.setBounds({
-        x: 100,
-        y: restoreBounds.y,
-        width: restoreBounds.width,
-        height: restoreBounds.height,
-      })
     })
   }
 })
