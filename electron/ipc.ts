@@ -61,13 +61,6 @@ export function registerIpcHandlers(
     return config.update(patch)
   })
 
-  // Character → main: toggle window mouse passthrough.
-  // forward:true means the OS still routes mousemove events to the renderer so it can
-  // sample alpha and flip back. forward:false only on solid pixels.
-  ipcMain.on('character:set-passthrough', (_event, passthrough: boolean) => {
-    windows.character.setIgnoreMouseEvents(passthrough, { forward: passthrough })
-  })
-
   // Character → main: position update.
   // setBounds (not setPosition) — Electron on Win11 with transparent windows has a known issue
   // where setPosition silently grows the window by 1px on each call. setBounds with explicit

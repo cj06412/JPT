@@ -54,8 +54,11 @@ function createCharacterWindow(): BrowserWindow {
   // (real fullscreen apps still cover it — accepted tradeoff)
   win.setAlwaysOnTop(true, 'screen-saver')
 
-  // v1: window is passthrough by default; renderer enables it on alpha-solid pixels via IPC
-  win.setIgnoreMouseEvents(true, { forward: true })
+  // v1: skip pixel-level click-through entirely. Whole 96×128 window receives
+  // mouse events. The placeholder sprite fills the bounding box so there's no
+  // visible "transparent area that should pass clicks to desktop". When real
+  // 24×32 sprite arrives in v1.5 we'll re-enable setIgnoreMouseEvents + alpha
+  // sampling for proper pixel-perfect click-through.
 
   loadRenderer(win, 'character')
   return win

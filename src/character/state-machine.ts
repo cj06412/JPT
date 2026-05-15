@@ -136,6 +136,8 @@ export function tapCling(state: CharState, now: number, floorY: number): CharSta
 }
 
 function randomPauseMs(): number {
-  // 0.5–14s 随机停顿，避免规律性
-  return 500 + Math.random() * 13_500
+  // 0.3–2s 随机停顿。Spec wants 0.5–14s for the "casual stroll" feel; with the
+  // placeholder red square it just looks broken when the character pauses for
+  // 14s. Shorten for v1; widen back in v1.5 once we have proper idle animation.
+  return 300 + Math.random() * 1700
 }

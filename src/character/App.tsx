@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { initialState, tick, CharState, beginHeld, updateHeld, releaseHeld, tapCling } from './state-machine'
 import { fallStep } from './physics'
-import { sampleAlphaScaled } from './alpha-map'
-import { useAlphaMap } from './use-alpha-map'
 import spriteUrl from '../../assets/sprites/jpt-walk.png'
 
 interface WalkBounds {
@@ -18,24 +16,11 @@ const CLING_SNAP_PX = 30
 export function App() {
   const [state, setState] = useState<CharState>(() => initialState())
   const stateRef = useRef(state)
-  // Sync stateRef via useEffect so it updates AFTER React commits new state.
-  // Render-phase mutation (`stateRef.current = state` directly in render body)
-  // was unreliable under React 19 + StrictMode — stateRef sometimes pointed
-  // to a stale value the rAF loop kept reading.
   useEffect(() => { stateRef.current = state }, [state])
   const boundsRef = useRef<WalkBounds | null>(null)
 
-  const alphaMap = useAlphaMap(spriteUrl)
-  const alphaMapRef = useRef(alphaMap)
-  alphaMapRef.current = alphaMap
-
   // Drag tracking
-  const dragRef = useRef<{ down: boolean; downX: number; downY: number; movedPast: boolean }>({
-    down: false, downX: 0, downY: 0, movedPast: false,
-  })
-  // Window-relative cursor (for sample-on-mousemove); we receive it from main process
-  // when the window is in passthrough mode and the OS forwards mousemove.
-  const lastPassthroughRef = useRef(true)
+  const dragRef = useRef({ down: false, downX: 0, downY: 0, movedPast: false })
 
   // Bounds query on mount
   useEffect(() => {
@@ -48,45 +33,21 @@ export function App() {
     return () => { mounted = false }
   }, [])
 
-  // Passthrough toggle helper
-  const setPassthrough = (on: boolean) => {
-    if (lastPassthroughRef.current === on) return
-    lastPassthroughRef.current = on
-    window.jpt.send('character:set-passthrough', on)
-  }
-
-  // Mouse handlers — only fire when window is non-passthrough OR forwarded
+  // Mouse handlers — window receives all clicks (v1 skips pixel-level click-through)
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      const map = alphaMapRef.current
-      const s = stateRef.current
-
-      // Drag detection
-      if (dragRef.current.down) {
-        const dx = e.screenX - dragRef.current.downX
-        const dy = e.screenY - dragRef.current.downY
-        if (!dragRef.current.movedPast && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
-          dragRef.current.movedPast = true
-          setState((cur) => beginHeld(cur, performance.now()))
-        }
-        if (dragRef.current.movedPast) {
-          // window position tracks cursor. tick() is a no-op in held mode, so the rAF
-          // loop won't push position via IPC — do it here directly.
-          const newX = e.screenX - 48 // half width
-          const newY = e.screenY - 64 // half height
-          setState((cur) => updateHeld(cur, newX, newY))
-          window.jpt.send('character:set-position', newX, newY)
-          return
-        }
+      if (!dragRef.current.down) return
+      const dx = e.screenX - dragRef.current.downX
+      const dy = e.screenY - dragRef.current.downY
+      if (!dragRef.current.movedPast && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+        dragRef.current.movedPast = true
+        setState((cur) => beginHeld(cur, performance.now()))
       }
-
-      // Alpha-mask hit testing (only meaningful while NOT in held/cling/fall)
-      if (map && (s.mode === 'idle' || s.mode === 'walk')) {
-        // e.clientX/Y are window-relative coords; sampleAlphaScaled handles
-        // the source-vs-rendered sprite-size mismatch so we work with both
-        // the 96×128 placeholder and the eventual 24×32 source art.
-        const solid = sampleAlphaScaled(map, e.clientX, e.clientY, 96, 128)
-        setPassthrough(!solid)
+      if (dragRef.current.movedPast) {
+        const newX = e.screenX - 48
+        const newY = e.screenY - 64
+        setState((cur) => updateHeld(cur, newX, newY))
+        window.jpt.send('character:set-position', newX, newY)
       }
     }
     const onMouseDown = (e: MouseEvent) => {
@@ -101,9 +62,6 @@ export function App() {
         if (!bounds) return
         setState((cur) => releaseHeld(cur, performance.now(), bounds.rightBound, CLING_SNAP_PX))
       } else {
-        // Click (no drag). Read the current mode synchronously via the ref so we
-        // can decide WITHOUT calling setState (whose updater fires twice under
-        // React 19 + StrictMode and would toggle the dialog open-close-open).
         const cur = stateRef.current
         if (cur.mode === 'cling') {
           const bounds = boundsRef.current
@@ -124,9 +82,7 @@ export function App() {
   }, [])
 
   // rAF tick loop — drives walk + fall integration + IPC position updates.
-  // Uses setState(updater) form so it composes correctly with the bounds-fetch's
-  // own setState — a plain setState(next) here would overwrite bounds-fetch's
-  // y-update with a stale y from `cur`, leaving the character walking at y=0.
+  // Updater form so it composes with bounds-fetch's setState without races.
   useEffect(() => {
     let raf = 0
     let last = performance.now()
@@ -176,7 +132,7 @@ export function App() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  // Visual transform: cling rotates 90°; landing squash applies vertical squish
+  // Visual transform
   const isClinging = state.mode === 'cling'
   const squashActive = state.squashUntilMs > performance.now()
   const transform = [
@@ -190,11 +146,11 @@ export function App() {
       style={{
         width: 96,
         height: 128,
-        background: 'red', // visible fallback if the sprite PNG fails to load
+        background: 'red',
         transform,
         transformOrigin: 'center',
         userSelect: 'none',
-        pointerEvents: 'auto',
+        cursor: 'pointer',
       }}
     >
       <img
