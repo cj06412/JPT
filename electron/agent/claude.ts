@@ -171,7 +171,7 @@ export class ClaudeSession implements AgentSession {
           this.cb.onText?.(block.text)
         } else if (block.type === 'tool_use' && typeof block.name === 'string') {
           // Summarize the tool input compactly for the SDV scroll card.
-          const input = block.input as Record<string, unknown> | undefined
+          const input = block.input as Record<string, unknown> | null | undefined
           const summary = summarizeToolInput(block.name, input)
           this.cb.onToolUse?.(block.name, summary)
         }
@@ -181,10 +181,12 @@ export class ClaudeSession implements AgentSession {
 
     if (type === 'user') {
       // Claude streams tool results back as a user-role message whose content
-      // is an array of tool_result blocks.
-      const message = ev.message as { content?: Array<Record<string, unknown>> } | undefined
-      const blocks = message?.content ?? []
-      for (const block of blocks) {
+      // is an array of tool_result blocks. A plain-string content here is the
+      // outbound echo of our own send() frame — skip it.
+      const message = ev.message as { content?: unknown } | undefined
+      const rawContent = message?.content
+      if (!Array.isArray(rawContent)) return
+      for (const block of rawContent as Array<Record<string, unknown>>) {
         if (block.type === 'tool_result') {
           const isError = block.is_error === true
           const raw = block.content
@@ -200,7 +202,6 @@ export class ClaudeSession implements AgentSession {
           } else {
             summary = ''
           }
-          // Trim to a card-sized blurb.
           const trimmed = summary.trim().slice(0, 280)
           this.cb.onToolResult?.(trimmed, isError)
         }
@@ -229,7 +230,7 @@ export class ClaudeSession implements AgentSession {
  * WebSearch → the query; WebFetch → the URL; TodoWrite → "更新进度";
  * anything else → the tool name.
  */
-function summarizeToolInput(tool: string, input: Record<string, unknown> | undefined): string {
+function summarizeToolInput(tool: string, input: Record<string, unknown> | null | undefined): string {
   if (!input) return tool
   if (tool === 'WebSearch' && typeof input.query === 'string') return `搜「${input.query}」`
   if (tool === 'WebFetch' && typeof input.url === 'string') return `打开 ${input.url}`
