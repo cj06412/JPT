@@ -18,7 +18,6 @@ export function App() {
   const [ready, setReady] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const currentAssistantIdx = useRef<number | null>(null)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -36,26 +35,24 @@ export function App() {
   useEffect(() => {
     const offToken = window.jpt.on('dialog:stream-token', (...args: unknown[]) => {
       const chunk = args[0] as string
+      // Append to the trailing assistant message if there is one, otherwise
+      // start a new one. Pure updater — works correctly under React 19
+      // StrictMode double-invocation (the previous ref-based version had a
+      // side-effect inside the updater that crashed on the second call).
       setMsgs((prev) => {
-        const next = [...prev]
-        if (currentAssistantIdx.current === null) {
-          next.push({ role: 'assistant', text: chunk })
-          currentAssistantIdx.current = next.length - 1
-        } else {
-          const i = currentAssistantIdx.current
-          next[i] = { ...next[i], text: next[i].text + chunk }
+        const last = prev[prev.length - 1]
+        if (last && last.role === 'assistant') {
+          return [...prev.slice(0, -1), { ...last, text: last.text + chunk }]
         }
-        return next
+        return [...prev, { role: 'assistant', text: chunk }]
       })
     })
     const offComplete = window.jpt.on('dialog:turn-complete', () => {
-      currentAssistantIdx.current = null
       setBusy(false)
     })
     const offError = window.jpt.on('dialog:error', (...args: unknown[]) => {
       const msg = args[0] as string
       setMsgs((prev) => [...prev, { role: 'error', text: msg }])
-      currentAssistantIdx.current = null
       setBusy(false)
     })
     return () => { offToken(); offComplete(); offError() }
