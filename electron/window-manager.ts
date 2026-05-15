@@ -65,14 +65,19 @@ function createCharacterWindow(): BrowserWindow {
 }
 
 function createDialogWindow(): BrowserWindow {
+  // Frameless + opaque. The SDV wood frame paints the whole window surface,
+  // so visually there's no transparent area to preserve. transparent:true +
+  // show:false → show() triggers a Win11 paint failure where the renderer
+  // never starts compositing; opaque avoids that quirk entirely.
   const win = new BrowserWindow({
     width: DIALOG_W,
     height: DIALOG_H,
     frame: false,
-    transparent: true,
+    transparent: false,
+    backgroundColor: '#3e2410', // wood outline color; brief flash before React paints
     alwaysOnTop: true,
     skipTaskbar: true,
-    show: false, // hidden until character is clicked
+    show: false,
     resizable: false,
     webPreferences: {
       preload: PRELOAD_PATH,
@@ -87,8 +92,10 @@ function createDialogWindow(): BrowserWindow {
 }
 
 function loadRenderer(win: BrowserWindow, name: 'character' | 'dialog' | 'settings' | 'welcome') {
+  win.webContents.on('console-message', (_e, level, message) => {
+    if (level >= 2) console.log(`[JPT/${name}] L${level} ${message}`)
+  })
   if (VITE_DEV_SERVER_URL) {
-    // VITE_DEV_SERVER_URL ships with a trailing slash; strip it so the URL doesn't end up with //
     const base = VITE_DEV_SERVER_URL.replace(/\/$/, '')
     win.loadURL(`${base}/src/${name}/index.html`)
   } else {
