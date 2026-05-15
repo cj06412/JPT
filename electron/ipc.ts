@@ -23,6 +23,7 @@ export function openSettingsWindow() {
 export function toggleDialog(windows: JPTWindows) {
   if (windows.dialog.isVisible()) {
     windows.dialog.hide()
+    windows.character.webContents.send('character:dialog-visibility', false)
     return
   }
   const charBounds = windows.character.getBounds()
@@ -36,6 +37,7 @@ export function toggleDialog(windows: JPTWindows) {
   windows.dialog.setBounds({ x, y, width: DIALOG_W, height: DIALOG_H })
   windows.dialog.show()
   windows.dialog.focus()
+  windows.character.webContents.send('character:dialog-visibility', true)
 }
 
 export interface IpcCallbacks {
@@ -92,6 +94,7 @@ export function registerIpcHandlers(
   // Dialog → main: close request
   ipcMain.on('dialog:close', () => {
     windows.dialog.hide()
+    windows.character.webContents.send('character:dialog-visibility', false)
   })
 
   // Dialog → main: send user message

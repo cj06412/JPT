@@ -22,6 +22,21 @@ export function App() {
   // Drag tracking
   const dragRef = useRef({ down: false, downX: 0, downY: 0, movedPast: false })
 
+  // Dialog visibility — when dialog is open, freeze the character (spec §3.1)
+  const dialogOpenRef = useRef(false)
+  useEffect(() => {
+    const off = window.jpt.on('character:dialog-visibility', (...args: unknown[]) => {
+      const visible = Boolean(args[0])
+      dialogOpenRef.current = visible
+      if (visible) {
+        // Snap to idle on the floor so the character looks stopped, not paused
+        // mid-walk. After dialog closes, idle naturally transitions back to walk.
+        setState((cur) => ({ ...cur, mode: 'idle', pauseUntilMs: 0, squashUntilMs: 0 }))
+      }
+    })
+    return () => { off() }
+  }, [])
+
   // Bounds query on mount
   useEffect(() => {
     let mounted = true
@@ -90,11 +105,10 @@ export function App() {
       const dt = now - last
       last = now
       // Don't tick while the user is actively dragging — drag handler is the
-      // sole owner of state during that period. Without this, the rAF would
-      // read a stale stateRef (still walking/idle) and clobber the held
-      // setState commits with setState(next), snapping the character back
-      // to the floor mid-drag.
-      if (dragRef.current.down && dragRef.current.movedPast) {
+      // sole owner of state during that period.
+      // Also don't tick while the dialog is open — character should freeze
+      // (spec §3.1: "进入 dialog open 子状态时角色固定不动直到对话框关闭").
+      if ((dragRef.current.down && dragRef.current.movedPast) || dialogOpenRef.current) {
         raf = requestAnimationFrame(loop)
         return
       }
