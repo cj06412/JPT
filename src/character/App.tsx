@@ -89,6 +89,15 @@ export function App() {
     const loop = (now: number) => {
       const dt = now - last
       last = now
+      // Don't tick while the user is actively dragging — drag handler is the
+      // sole owner of state during that period. Without this, the rAF would
+      // read a stale stateRef (still walking/idle) and clobber the held
+      // setState commits with setState(next), snapping the character back
+      // to the floor mid-drag.
+      if (dragRef.current.down && dragRef.current.movedPast) {
+        raf = requestAnimationFrame(loop)
+        return
+      }
       const bounds = boundsRef.current
       if (!bounds) {
         raf = requestAnimationFrame(loop)
