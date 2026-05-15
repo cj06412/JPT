@@ -171,34 +171,56 @@ export function App() {
   ].filter(Boolean).join(' ')
 
   const frame = walkFrame(state.mode, performance.now())
+  const animation =
+    state.mode === 'idle' ? 'jpt-breathe 2.6s ease-in-out infinite'
+    : state.mode === 'cling' ? 'jpt-sway 1.8s ease-in-out infinite'
+    : 'none'
   return (
     <div
       style={{
         width: 96,
         height: 128,
-        background: 'red', // visible fallback if PNG fails
-        transform,
+        transform,            // facing flip / cling rotate / squash
         transformOrigin: 'center',
         userSelect: 'none',
         cursor: 'pointer',
-        overflow: 'hidden',
-        position: 'relative',
       }}
     >
-      <img
-        src={spriteUrl}
-        alt="JPT"
-        draggable={false}
+      <div
         style={{
-          position: 'absolute',
-          left: `${-frame * 96}px`,
-          top: 0,
-          width: `${FRAME_COUNT * 96}px`,
-          height: 128,
-          display: 'block',
-          imageRendering: 'pixelated',
+          width: '100%',
+          height: '100%',
+          background: 'red',
+          overflow: 'hidden',
+          position: 'relative',
+          animation,          // breathe / sway — translate only, no transform clash
         }}
-      />
+      >
+        <img
+          src={spriteUrl}
+          alt="JPT"
+          draggable={false}
+          style={{
+            position: 'absolute',
+            left: `${-frame * 96}px`,
+            top: 0,
+            width: `${FRAME_COUNT * 96}px`,
+            height: 128,
+            display: 'block',
+            imageRendering: 'pixelated',
+          }}
+        />
+      </div>
+      <style>{`
+        @keyframes jpt-breathe {
+          0%,100% { transform: translateY(0); }
+          50%     { transform: translateY(-2px); }
+        }
+        @keyframes jpt-sway {
+          0%,100% { transform: translateX(0) rotate(0deg); }
+          50%     { transform: translateX(1px) rotate(2deg); }
+        }
+      `}</style>
     </div>
   )
 }
