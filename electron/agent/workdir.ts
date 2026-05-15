@@ -35,17 +35,38 @@ const PLACEHOLDER_PERSONA = `# JPT —— 小屿的男朋友的 AI 化身
 `
 
 /**
- * Ensure `<basePath>/workdir/CLAUDE.md` exists. Creates the directory if missing
- * and writes the placeholder persona only when CLAUDE.md is absent — never
- * overwrites an existing persona the developer (or future v2 setup) has edited.
- * Returns the workdir path for use as `--add-dir`.
+ * Ensure `<basePath>/workdir/CLAUDE.md` exists. Creates the directory if missing.
+ * When `personaDoc` is provided (non-empty), it is written as the persona
+ * (settings-driven). Otherwise the placeholder persona is written only when
+ * CLAUDE.md is absent — never overwrites an existing persona the developer
+ * (or future v2 setup) has edited. Returns the workdir path for `--add-dir`.
  */
-export function ensureWorkdir(basePath: string): string {
+export function ensureWorkdir(basePath: string, personaDoc?: string): string {
   const workdir = path.join(basePath, 'workdir')
   fs.mkdirSync(workdir, { recursive: true })
+  // v1.5: also scaffold the .claude/skills dir so the WeChat persona skill
+  // (project-level, auto-discovered because spawn uses --setting-sources
+  // project,local) has a home. Empty is fine — Claude ignores empty skill dirs.
+  fs.mkdirSync(path.join(workdir, '.claude', 'skills'), { recursive: true })
   const personaPath = path.join(workdir, 'CLAUDE.md')
-  if (!fs.existsSync(personaPath)) {
+  if (personaDoc && personaDoc.trim()) {
+    fs.writeFileSync(personaPath, personaDoc, 'utf-8')
+  } else if (!fs.existsSync(personaPath)) {
     fs.writeFileSync(personaPath, PLACEHOLDER_PERSONA, 'utf-8')
   }
   return workdir
+}
+
+/**
+ * Overwrite <workdir>/CLAUDE.md with an explicit persona doc. Called when the
+ * user edits the persona in the settings window. Empty/whitespace input is
+ * ignored (keeps whatever's there — never blank out the persona).
+ * Returns true if written.
+ */
+export function writePersona(basePath: string, personaDoc: string): boolean {
+  if (!personaDoc || !personaDoc.trim()) return false
+  const workdir = path.join(basePath, 'workdir')
+  fs.mkdirSync(workdir, { recursive: true })
+  fs.writeFileSync(path.join(workdir, 'CLAUDE.md'), personaDoc, 'utf-8')
+  return true
 }

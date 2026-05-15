@@ -39,7 +39,7 @@ let welcomeWin: BrowserWindow | null = null
 
 app.whenReady().then(async () => {
   windows = createWindows()
-  const workdir = ensureWorkdir(app.getPath('userData'))
+  const workdir = ensureWorkdir(app.getPath('userData'), configStore.snapshot().personaDoc)
   const historyStore = new HistoryStore(app.getPath('userData'))
   session = new ClaudeSession(workdir)
   registerIpcHandlers(windows, session, configStore, historyStore, {

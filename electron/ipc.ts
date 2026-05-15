@@ -1,5 +1,6 @@
-import { ipcMain, screen, BrowserWindow } from 'electron'
+import { ipcMain, screen, BrowserWindow, app } from 'electron'
 import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow } from './window-manager'
+import { writePersona } from './agent/workdir'
 import type { JPTWindows } from './window-manager'
 import type { AgentSession } from './agent/session'
 import type { ConfigStore } from './config-store'
@@ -59,8 +60,18 @@ export function registerIpcHandlers(
 
   // Settings IPC — renderer reads/writes config; main owns the file
   ipcMain.handle('settings:get', () => config.snapshot())
-  ipcMain.handle('settings:set', (_event, patch: Partial<ConfigSnapshot>) => {
-    return config.update(patch)
+  ipcMain.handle('settings:set', async (_event, patch: Partial<ConfigSnapshot>) => {
+    const snap = config.update(patch)
+    if (patch.personaDoc !== undefined) {
+      const changed = writePersona(app.getPath('userData'), snap.personaDoc)
+      if (changed) {
+        // Persona file changed — restart the Claude session so the new
+        // CLAUDE.md is picked up on the next message.
+        session.terminate()
+        await session.start()
+      }
+    }
+    return snap
   })
 
   // Character → main: position update.
