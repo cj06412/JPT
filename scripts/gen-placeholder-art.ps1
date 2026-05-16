@@ -3,7 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File scripts/gen-placeholder-art.ps1
 # WARNING: this overwrites everything in assets/sprites with placeholders —
 # only run it when you want to reset to placeholders. Replace with real art
-# (jpt-stand1/2, jpt-walk1..4, jpt-portrait, 3 expressions) before gifting.
+# (jpt-stand1/2, walk1..5, jpt-portrait, 3 expressions) before gifting.
 param()
 
 Add-Type -AssemblyName System.Drawing
@@ -28,11 +28,11 @@ New-Item -Force -ItemType Directory "$root\assets\icons" | Out-Null
 # frame). Slightly different tints so frame cycling is visible with placeholders.
 Save-Square 256 240 70 70  "$root\assets\sprites\jpt-stand1.png"
 Save-Square 256 240 95 95  "$root\assets\sprites\jpt-stand2.png"
-Save-Square 256 240 60 60  "$root\assets\sprites\jpt-walk1.png"
-Save-Square 256 240 100 60 "$root\assets\sprites\jpt-walk2.png"
-Save-Square 256 240 60 100 "$root\assets\sprites\jpt-walk3.png"
-Save-Square 256 240 30 30  "$root\assets\sprites\jpt-walk4.png"
-Save-Square 256 240 130 90 "$root\assets\sprites\jpt-walk5.png"
+Save-Square 256 240 60 60  "$root\assets\sprites\walk1.png"
+Save-Square 256 240 100 60 "$root\assets\sprites\walk2.png"
+Save-Square 256 240 60 100 "$root\assets\sprites\walk3.png"
+Save-Square 256 240 30 30  "$root\assets\sprites\walk4.png"
+Save-Square 256 240 130 90 "$root\assets\sprites\walk5.png"
 
 Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait.png"
 Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait-smile.png"

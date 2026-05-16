@@ -4,11 +4,11 @@ import { fallStep } from './physics'
 import { spriteFrame } from './sprite-sheet'
 import stand1Url from '../../assets/sprites/jpt-stand1.png'
 import stand2Url from '../../assets/sprites/jpt-stand2.png'
-import walk1Url from '../../assets/sprites/jpt-walk1.png'
-import walk2Url from '../../assets/sprites/jpt-walk2.png'
-import walk3Url from '../../assets/sprites/jpt-walk3.png'
-import walk4Url from '../../assets/sprites/jpt-walk4.png'
-import walk5Url from '../../assets/sprites/jpt-walk5.png'
+import walk1Url from '../../assets/sprites/walk1.png'
+import walk2Url from '../../assets/sprites/walk2.png'
+import walk3Url from '../../assets/sprites/walk3.png'
+import walk4Url from '../../assets/sprites/walk4.png'
+import walk5Url from '../../assets/sprites/walk5.png'
 
 const STAND_FRAMES = [stand1Url, stand2Url]
 const WALK_FRAMES = [walk1Url, walk2Url, walk3Url, walk4Url, walk5Url]
