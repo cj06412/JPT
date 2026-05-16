@@ -9,13 +9,19 @@ import walk2Url from '../../assets/sprites/walk2.png'
 import walk3Url from '../../assets/sprites/walk3.png'
 import walk4Url from '../../assets/sprites/walk4.png'
 import walk5Url from '../../assets/sprites/walk5.png'
+import hangingUrl from '../../assets/sprites/jpt-hanging.png'
+import drop1Url from '../../assets/sprites/droping1.png'
+import drop2Url from '../../assets/sprites/droping2.png'
+import landingUrl from '../../assets/sprites/landing.png'
+import watchingUrl from '../../assets/sprites/watching.png'
 
 const STAND_FRAMES = [stand1Url, stand2Url]
 const WALK_FRAMES = [walk1Url, walk2Url, walk3Url, walk4Url, walk5Url]
+const DROP_FRAMES = [drop1Url, drop2Url]
 // Every frame is mounted at once and toggled by visibility — swapping a single
 // <img>'s src between large PNGs faster than the browser can decode them made
 // later frames never paint (they reverted before decode finished).
-const ALL_FRAMES = [stand1Url, stand2Url, walk1Url, walk2Url, walk3Url, walk4Url, walk5Url]
+const ALL_FRAMES = [stand1Url, stand2Url, walk1Url, walk2Url, walk3Url, walk4Url, walk5Url, hangingUrl, drop1Url, drop2Url, landingUrl, watchingUrl]
 
 interface WalkBounds {
   leftBound: number
@@ -114,8 +120,7 @@ export function App() {
       } else {
         const cur = stateRef.current
         if (cur.mode === 'cling') {
-          const bounds = boundsRef.current
-          if (bounds) setState(tapCling(cur, performance.now(), bounds.floorY))
+          setState(tapCling(cur, performance.now()))
         } else {
           window.jpt.send('character:click')
         }
@@ -172,7 +177,7 @@ export function App() {
         }, now)
         next = { ...cur, x: r.x, y: r.y }
         if (r.landed) {
-          next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + IDLE_MS, squashUntilMs: now + 200 }
+          next = { ...next, mode: 'idle', y: bounds.floorY, pauseUntilMs: now + IDLE_MS, squashUntilMs: now + 1000 }
         }
       } else {
         next = tick(cur, {
@@ -205,17 +210,25 @@ export function App() {
 
   // Visual transform
   const isClinging = state.mode === 'cling'
-  const squashActive = state.squashUntilMs > performance.now()
+  // For 200ms after a fall lands, show the landing.png impact frame. The
+  // fall-land handler sets squashUntilMs = now + 200 as that timer. No more
+  // scale() squash — the real art shouldn't be distorted.
+  const landingActive = state.squashUntilMs > performance.now()
   const transform = [
     `scaleX(${state.facing})`,
     isClinging ? 'rotate(90deg)' : '',
-    squashActive ? 'scale(1.4, 0.6)' : '',
   ].filter(Boolean).join(' ')
 
   // idle breathes between 2 stand frames (time); walk advances by distance
   // walked (no foot-slide) and bobs up on the passing frame.
   const sf = spriteFrame(state.mode, performance.now(), walkPxRef.current)
-  const activeSrc = sf.set === 'walk' ? WALK_FRAMES[sf.index] : STAND_FRAMES[sf.index]
+  const activeSrc =
+    landingActive ? landingUrl
+    : sf.set === 'walk' ? WALK_FRAMES[sf.index]
+    : sf.set === 'hold' ? hangingUrl
+    : sf.set === 'drop' ? DROP_FRAMES[sf.index]
+    : sf.set === 'watch' ? watchingUrl
+    : STAND_FRAMES[sf.index]
   const animation = state.mode === 'cling' ? 'jpt-sway 1.8s ease-in-out infinite' : 'none'
   return (
     <div
@@ -251,6 +264,10 @@ export function App() {
               objectFit: 'contain',      // square source art, never distorted in the 96x128 box
               objectPosition: 'bottom',  // feet planted on the floor, not floating/centered
               imageRendering: 'pixelated',
+              // landing.png is rendered bigger (grows up from the feet). Capped
+              // by the 96×128 character window — anything past that clips.
+              transform: src === landingUrl ? 'scale(1.2)' : undefined,
+              transformOrigin: 'bottom center',
               // All frames stay mounted+decoded; only the active one is painted.
               visibility: src === activeSrc ? 'visible' : 'hidden',
             }}

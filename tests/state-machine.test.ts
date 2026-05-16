@@ -130,12 +130,14 @@ describe('state-machine', () => {
     expect(out.fallStartY).toBe(200)
   })
 
-  it('tapCling exits cling and returns to idle on floor', () => {
-    const s: CharState = { ...initialState(), mode: 'cling', x: 1100, y: 0 }
-    const out = tapCling(s, 2000, /*floorY*/ 800)
-    expect(out.mode).toBe('idle')
-    expect(out.y).toBe(800)
-    expect(out.pauseUntilMs).toBeGreaterThan(2000)
+  it('tapCling drops the character off the wall (enters fall from cling pos)', () => {
+    const s: CharState = { ...initialState(), mode: 'cling', x: 1100, y: 300 }
+    const out = tapCling(s, 2000)
+    expect(out.mode).toBe('fall')
+    expect(out.fallStartMs).toBe(2000)
+    expect(out.fallStartX).toBe(1100)
+    expect(out.fallStartY).toBe(300)
+    expect(out.fallVx).toBe(0)
   })
 
   it('tick is a no-op in held mode', () => {

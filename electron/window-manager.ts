@@ -13,8 +13,10 @@ const PRELOAD_PATH = path.join(__dirname, 'preload.js')
 // same numbers without drift between createDialogWindow() and the click handler.
 export const CHARACTER_W = 96
 export const CHARACTER_H = 128
+// Width matches the original dialog (720); height follows jpt-dialog.png's
+// aspect ratio (3159×1080 ≈ 2.925:1) so the frame art isn't squished.
 export const DIALOG_W = 720
-export const DIALOG_H = 360
+export const DIALOG_H = 246
 
 export interface JPTWindows {
   character: BrowserWindow
@@ -101,16 +103,16 @@ function createCharacterWindow(): BrowserWindow {
 }
 
 function createDialogWindow(): BrowserWindow {
-  // Frameless + opaque. The SDV wood frame paints the whole window surface,
-  // so visually there's no transparent area to preserve. transparent:true +
-  // show:false → show() triggers a Win11 paint failure where the renderer
-  // never starts compositing; opaque avoids that quirk entirely.
+  // Frameless + transparent so jpt-dialog.png's transparent margin doesn't show
+  // a brown rectangle. The v1 Win11 "transparent + show:false → no paint" quirk
+  // is mitigated by the global app.disableHardwareAcceleration() (same setup
+  // that makes the character window transparent + paint correctly).
   const win = new BrowserWindow({
     width: DIALOG_W,
     height: DIALOG_H,
     frame: false,
-    transparent: false,
-    backgroundColor: '#3e2410', // wood outline color; brief flash before React paints
+    transparent: true,
+    backgroundColor: '#00000000', // fully transparent
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,

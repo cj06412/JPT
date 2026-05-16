@@ -99,6 +99,19 @@ export class ClaudeSession implements AgentSession {
       }
     })
 
+    proc.on('spawn', () => {
+      // Process is up and stdin is writable — that's "ready". Do NOT wait for
+      // the first stdout event: claude CLI 2.1.x in `-p` stream-json mode emits
+      // nothing until it receives the first user message, so gating readiness
+      // on stdout deadlocks the dialog ("准备中" forever, input disabled, so the
+      // first message can never be sent). The stdout path below is kept as an
+      // idempotent fallback.
+      if (!this.readyFired) {
+        this.readyFired = true
+        this.cb.onSessionReady?.()
+      }
+    })
+
     proc.on('error', (err) => {
       // spawn-time failures (ENOENT race, EACCES, etc.); without this listener Node treats
       // the error as unhandled and crashes the Electron main process.

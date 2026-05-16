@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { SDVFrame } from './SDVFrame'
-import { PaperPanel } from './PaperPanel'
 import { PortraitPanel } from './PortraitPanel'
 import { InputBar } from './InputBar'
 import { Markdown } from './markdown'
@@ -9,6 +8,15 @@ import { ToolUseCard } from './ToolUseCard'
 import { parseSlash, slashHelpText } from './slash'
 import type { Expression } from './PortraitPanel'
 import { playSound, setSoundsEnabled } from './sounds'
+
+// Regions over jpt-dialog.png, as % of the window. First-pass estimates —
+// tweak these numbers to nudge each region into its painted slot.
+const LAYOUT = {
+  chat:     { left: '6%',  top: '10%', width: '55.5%', height: '64%' },
+  input:    { left: '6%',  top: '71%', width: '55.5%', height: '17%' },
+  portrait: { left: '67.55%', top: '14.8%', width: '25%',   height: '53%' },
+  name:     { left: '66%', top: '72%', width: '29%',   height: '14%' },
+} as const
 
 type Msg =
   | { role: 'user' | 'assistant' | 'error'; text: string }
@@ -138,38 +146,75 @@ export function App() {
 
   return (
     <SDVFrame>
-      <div style={{ display: 'flex', flex: 1, gap: 8, minHeight: 0 }}>
-        <PaperPanel ref={scrollRef}>
-          {msgs.length === 0 && (
-            <div style={{ color: theme.paperInkFaded }}>说点什么试试…（Esc 关闭）</div>
-          )}
-          {msgs.map((m, i) => {
-            if (m.role === 'tool') {
-              return <ToolUseCard key={i} tool={m.tool} summary={m.summary} result={m.result} isError={m.isError} />
-            }
-            return (
-              <div
-                key={i}
-                style={{ marginBottom: 8, color: m.role === 'error' ? theme.error : theme.paperInk }}
-              >
-                <strong>
-                  {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
-                </strong>{' '}
-                {m.role === 'assistant' ? <Markdown text={m.text} /> : <span>{m.text}</span>}
-              </div>
-            )
-          })}
-        </PaperPanel>
+      {/* left paper — chat scroll */}
+      <div
+        ref={scrollRef}
+        style={{
+          position: 'absolute',
+          ...LAYOUT.chat,
+          overflowY: 'auto',
+          fontSize: 13,
+          lineHeight: 1.55,
+          color: theme.paperInk,
+          fontFamily: theme.fontPixel,
+          scrollbarWidth: 'thin',
+        }}
+      >
+        {msgs.length === 0 && (
+          <div style={{ color: theme.paperInkFaded }}>说点什么试试…（Esc 关闭）</div>
+        )}
+        {msgs.map((m, i) => {
+          if (m.role === 'tool') {
+            return <ToolUseCard key={i} tool={m.tool} summary={m.summary} result={m.result} isError={m.isError} />
+          }
+          return (
+            <div
+              key={i}
+              style={{ marginBottom: 8, color: m.role === 'error' ? theme.error : theme.paperInk }}
+            >
+              <strong>
+                {m.role === 'user' ? '我：' : m.role === 'error' ? '错误：' : 'JPT：'}
+              </strong>{' '}
+              {m.role === 'assistant' ? <Markdown text={m.text} /> : <span>{m.text}</span>}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* right box — portrait */}
+      <div style={{ position: 'absolute', ...LAYOUT.portrait }}>
         <PortraitPanel name="JPT" expression={expression} />
       </div>
-      <InputBar
-        ref={inputRef}
-        value={input}
-        onChange={setInput}
-        onSend={onSend}
-        disabled={busy || !ready}
-        placeholder={!ready ? 'JPT 准备中…' : busy ? 'JPT 思考中…' : '说点什么…'}
-      />
+
+      {/* right scroll — name */}
+      <div
+        style={{
+          position: 'absolute',
+          ...LAYOUT.name,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: theme.fontPixel,
+          fontWeight: 'bold',
+          fontSize: 16,
+          color: theme.paperInk,
+          userSelect: 'none',
+        }}
+      >
+        JPT
+      </div>
+
+      {/* input over the bottom of the left paper — chatbox.png + send.png */}
+      <div style={{ position: 'absolute', ...LAYOUT.input }}>
+        <InputBar
+          ref={inputRef}
+          value={input}
+          onChange={setInput}
+          onSend={onSend}
+          disabled={busy || !ready}
+          placeholder={!ready ? 'JPT 准备中…' : busy ? 'JPT 思考中…' : '说点什么…'}
+        />
+      </div>
     </SDVFrame>
   )
 }

@@ -127,13 +127,15 @@ export function releaseHeld(
   }
 }
 
-/** Tap on a clinging character — re-enter idle on the floor. */
-export function tapCling(state: CharState, now: number, floorY: number): CharState {
+/** Tap on a clinging character — drop it off the wall (fall → land → stand). */
+export function tapCling(state: CharState, now: number): CharState {
   if (state.mode !== 'cling') return state
   return {
     ...state,
-    mode: 'idle',
-    y: floorY,
-    pauseUntilMs: now + IDLE_MS,
+    mode: 'fall',
+    fallStartMs: now,
+    fallStartX: state.x,
+    fallStartY: state.y,
+    fallVx: 0,
   }
 }
