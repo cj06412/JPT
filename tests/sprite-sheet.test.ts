@@ -9,15 +9,15 @@ describe('spriteFrame', () => {
     expect(spriteFrame('idle', 1800, 9999)).toEqual({ set: 'stand', index: 0, bobPx: 0 })
   })
 
-  it('walk is a 4-frame cycle by DISTANCE (14px/frame); passing frames (1,3) bob up', () => {
-    // cycle: 0 contactL (grounded) -> 1 passing (bob) -> 2 contactR (grounded) -> 3 passing (bob)
+  it('walk is a 5-frame cycle by DISTANCE (14px/frame); bob on frames 1 & 3', () => {
     expect(spriteFrame('walk', 0, 0)).toEqual({ set: 'walk', index: 0, bobPx: 0 })
     expect(spriteFrame('walk', 0, 13)).toEqual({ set: 'walk', index: 0, bobPx: 0 })
     expect(spriteFrame('walk', 0, 14)).toEqual({ set: 'walk', index: 1, bobPx: 2 })
     expect(spriteFrame('walk', 0, 28)).toEqual({ set: 'walk', index: 2, bobPx: 0 })
     expect(spriteFrame('walk', 0, 42)).toEqual({ set: 'walk', index: 3, bobPx: 2 })
-    expect(spriteFrame('walk', 0, 56)).toEqual({ set: 'walk', index: 0, bobPx: 0 })
-    expect(spriteFrame('walk', 0, 70)).toEqual({ set: 'walk', index: 1, bobPx: 2 })
+    expect(spriteFrame('walk', 0, 56)).toEqual({ set: 'walk', index: 4, bobPx: 0 })
+    expect(spriteFrame('walk', 0, 70)).toEqual({ set: 'walk', index: 0, bobPx: 0 })
+    expect(spriteFrame('walk', 0, 84)).toEqual({ set: 'walk', index: 1, bobPx: 2 })
   })
 
   it('walk frame is independent of time (no foot-slide): same distance → same frame', () => {

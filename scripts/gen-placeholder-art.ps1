@@ -32,6 +32,7 @@ Save-Square 256 240 60 60  "$root\assets\sprites\jpt-walk1.png"
 Save-Square 256 240 100 60 "$root\assets\sprites\jpt-walk2.png"
 Save-Square 256 240 60 100 "$root\assets\sprites\jpt-walk3.png"
 Save-Square 256 240 30 30  "$root\assets\sprites\jpt-walk4.png"
+Save-Square 256 240 130 90 "$root\assets\sprites\jpt-walk5.png"
 
 Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait.png"
 Save-Square 256 240 60 60 "$root\assets\sprites\jpt-portrait-smile.png"

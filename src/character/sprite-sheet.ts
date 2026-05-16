@@ -1,10 +1,13 @@
 import type { CharMode } from './state-machine'
 
-export const WALK_FRAME_COUNT = 4
+export const WALK_FRAME_COUNT = 5
 export const STAND_FRAME_COUNT = 2
 export const STAND_FRAME_MS = 900 // calm breathing (2 frames = 1.8s full breath)
 export const STRIDE_PX = 14       // walk advances ONE frame per 14px actually travelled
-export const WALK_BOB_PX = 2      // body lifts 2px on the passing frame (SDV-style bounce)
+export const WALK_BOB_PX = 2      // body lifts 2px on the bob frames (SDV-style bounce)
+// Which walk frame indices (0-based) lift up — the "airborne / passing" poses.
+// One-line tweak if the real 5-frame art's lifted frames differ (or [] = off).
+export const WALK_BOB_FRAMES = [1, 3]
 
 export type FrameSet = 'stand' | 'walk'
 
@@ -27,10 +30,10 @@ export interface SpriteFrame {
  */
 export function spriteFrame(mode: CharMode, nowMs: number, walkPx: number): SpriteFrame {
   if (mode === 'walk') {
-    // 4-frame cycle: 0 contactL, 1 passing, 2 contactR, 3 passing.
-    // Contact frames are grounded; passing frames (1,3) bob up.
+    // 5-frame cycle, advanced by distance. WALK_BOB_FRAMES lift up; the rest
+    // stay grounded.
     const index = Math.floor(walkPx / STRIDE_PX) % WALK_FRAME_COUNT
-    return { set: 'walk', index, bobPx: index === 1 || index === 3 ? WALK_BOB_PX : 0 }
+    return { set: 'walk', index, bobPx: WALK_BOB_FRAMES.includes(index) ? WALK_BOB_PX : 0 }
   }
   if (mode === 'idle') {
     return { set: 'stand', index: Math.floor(nowMs / STAND_FRAME_MS) % STAND_FRAME_COUNT, bobPx: 0 }
