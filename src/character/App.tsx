@@ -6,13 +6,15 @@ import stand1Url from '../../assets/sprites/jpt-stand1.png'
 import stand2Url from '../../assets/sprites/jpt-stand2.png'
 import walk1Url from '../../assets/sprites/jpt-walk1.png'
 import walk2Url from '../../assets/sprites/jpt-walk2.png'
+import walk3Url from '../../assets/sprites/jpt-walk3.png'
+import walk4Url from '../../assets/sprites/jpt-walk4.png'
 
 const STAND_FRAMES = [stand1Url, stand2Url]
-const WALK_FRAMES = [walk1Url, walk2Url]
+const WALK_FRAMES = [walk1Url, walk2Url, walk3Url, walk4Url]
 // Every frame is mounted at once and toggled by visibility — swapping a single
 // <img>'s src between large PNGs faster than the browser can decode them made
-// the second frame never paint (it reverted before decode finished).
-const ALL_FRAMES = [stand1Url, stand2Url, walk1Url, walk2Url]
+// later frames never paint (they reverted before decode finished).
+const ALL_FRAMES = [stand1Url, stand2Url, walk1Url, walk2Url, walk3Url, walk4Url]
 
 interface WalkBounds {
   leftBound: number
