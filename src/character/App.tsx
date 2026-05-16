@@ -6,11 +6,13 @@ import stand1Url from '../../assets/sprites/jpt-stand1.png'
 import stand2Url from '../../assets/sprites/jpt-stand2.png'
 import walk1Url from '../../assets/sprites/jpt-walk1.png'
 import walk2Url from '../../assets/sprites/jpt-walk2.png'
-import walk3Url from '../../assets/sprites/jpt-walk3.png'
-import walk4Url from '../../assets/sprites/jpt-walk4.png'
 
 const STAND_FRAMES = [stand1Url, stand2Url]
-const WALK_FRAMES = [walk1Url, walk2Url, walk3Url, walk4Url]
+const WALK_FRAMES = [walk1Url, walk2Url]
+// Every frame is mounted at once and toggled by visibility — swapping a single
+// <img>'s src between large PNGs faster than the browser can decode them made
+// the second frame never paint (it reverted before decode finished).
+const ALL_FRAMES = [stand1Url, stand2Url, walk1Url, walk2Url]
 
 interface WalkBounds {
   leftBound: number
@@ -27,6 +29,8 @@ export function App() {
   const stateRef = useRef(state)
   useEffect(() => { stateRef.current = state }, [state])
   const boundsRef = useRef<WalkBounds | null>(null)
+  // Cumulative px walked — drives the walk frame by DISTANCE (no foot-slide).
+  const walkPxRef = useRef(0)
 
   // Drag tracking
   const dragRef = useRef({ down: false, downX: 0, downY: 0, movedPast: false })
@@ -44,6 +48,20 @@ export function App() {
       }
     })
     return () => { off() }
+  }, [])
+
+  // Animation re-render driver. The rAF loop only setStates (→ re-renders)
+  // when CharState changes — that's every tick during walk (x moves) but
+  // NEVER during idle (state is stable). The 2-frame stand "breathing" needs
+  // the component to re-render so spriteFrame(performance.now()) advances.
+  // A light interval forces that. Skipped while the dialog is open so the
+  // character stays fully frozen (spec §3.1).
+  const [, setAnimTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!dialogOpenRef.current) setAnimTick((t) => (t + 1) & 0xffff)
+    }, 150)
+    return () => clearInterval(id)
   }, [])
 
   // Bounds query on mount + on multi-screen / taskbar changes
@@ -164,6 +182,14 @@ export function App() {
           if (next.y !== bounds.floorY) next = { ...next, y: bounds.floorY }
         }
       }
+      // Accumulate walked distance so the walk frame advances by travel, not
+      // time (kills foot-sliding). Reset when not walking so each walk starts
+      // mid-stride-free on frame 0.
+      if (next.mode === 'walk') {
+        walkPxRef.current += Math.abs(next.x - cur.x)
+      } else {
+        walkPxRef.current = 0
+      }
       if (next !== cur) {
         setState(next)
         window.jpt.send('character:set-position', next.x, next.y)
@@ -183,10 +209,10 @@ export function App() {
     squashActive ? 'scale(1.4, 0.6)' : '',
   ].filter(Boolean).join(' ')
 
-  // Per-frame separate images: idle breathes between 2 stand frames, walk
-  // cycles 4 frames. No CSS breathe — the 2-frame stand art carries it.
-  const sf = spriteFrame(state.mode, performance.now())
-  const frameSrc = sf.set === 'walk' ? WALK_FRAMES[sf.index] : STAND_FRAMES[sf.index]
+  // idle breathes between 2 stand frames (time); walk advances by distance
+  // walked (no foot-slide) and bobs up on the passing frame.
+  const sf = spriteFrame(state.mode, performance.now(), walkPxRef.current)
+  const activeSrc = sf.set === 'walk' ? WALK_FRAMES[sf.index] : STAND_FRAMES[sf.index]
   const animation = state.mode === 'cling' ? 'jpt-sway 1.8s ease-in-out infinite' : 'none'
   return (
     <div
@@ -203,21 +229,30 @@ export function App() {
         style={{
           width: '100%',
           height: '100%',
-          animation,          // cling sway — translate/rotate only, no transform clash
+          position: 'relative',
+          animation,          // cling sway (none for walk/idle)
+          transform: `translateY(${-sf.bobPx}px)`, // SDV-style walk bounce
         }}
       >
-        <img
-          src={frameSrc}
-          alt="JPT"
-          draggable={false}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain', // square source art, never distorted in the 96x128 box
-            display: 'block',
-            imageRendering: 'pixelated',
-          }}
-        />
+        {ALL_FRAMES.map((src) => (
+          <img
+            key={src}
+            src={src}
+            alt="JPT"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',      // square source art, never distorted in the 96x128 box
+              objectPosition: 'bottom',  // feet planted on the floor, not floating/centered
+              imageRendering: 'pixelated',
+              // All frames stay mounted+decoded; only the active one is painted.
+              visibility: src === activeSrc ? 'visible' : 'hidden',
+            }}
+          />
+        ))}
       </div>
       <style>{`
         @keyframes jpt-sway {
