@@ -40,6 +40,9 @@ export function App() {
   const boundsRef = useRef<WalkBounds | null>(null)
   // Cumulative px walked — drives the walk frame by DISTANCE (no foot-slide).
   const walkPxRef = useRef(0)
+  // Wakes the rAF loop when it has self-suspended at idle (set by the rAF
+  // effect; called from input/dialog handlers so a sleeping pet reacts).
+  const kickRef = useRef<() => void>(() => {})
 
   // Drag tracking
   const dragRef = useRef({ down: false, downX: 0, downY: 0, movedPast: false })
@@ -54,24 +57,20 @@ export function App() {
         // Snap to idle on the floor so the character looks stopped, not paused
         // mid-walk. After dialog closes, idle naturally transitions back to walk.
         setState((cur) => ({ ...cur, mode: 'idle', pauseUntilMs: 0, squashUntilMs: 0 }))
+      } else {
+        // Dialog closed — wake the (suspended) loop so the pet resumes.
+        kickRef.current()
       }
     })
     return () => { off() }
   }, [])
 
-  // Animation re-render driver. The rAF loop only setStates (→ re-renders)
-  // when CharState changes — that's every tick during walk (x moves) but
-  // NEVER during idle (state is stable). The 2-frame stand "breathing" needs
-  // the component to re-render so spriteFrame(performance.now()) advances.
-  // A light interval forces that. Skipped while the dialog is open so the
-  // character stays fully frozen (spec §3.1).
-  const [, setAnimTick] = useState(0)
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (!dialogOpenRef.current) setAnimTick((t) => (t + 1) & 0xffff)
-    }, 150)
-    return () => clearInterval(id)
-  }, [])
+  // Idle "breathing" is now a pure CSS keyframe (compositor-driven, ~0 CPU) —
+  // see the jpt-breath-a/b animation below. We deliberately do NOT force a
+  // 150ms React re-render anymore: that re-rendered the whole transparent
+  // always-on-top window 6.7×/s forever, which (under software compositing)
+  // pinned ~half a CPU core at idle. The rAF loop only re-renders when state
+  // actually changes (walk/fall), so idle now produces zero frames.
 
   // Bounds query on mount + on multi-screen / taskbar changes
   useEffect(() => {
@@ -82,6 +81,7 @@ export function App() {
         boundsRef.current = b
         // keep x in range, snap y to new floor
         setState((s) => ({ ...s, x: Math.min(Math.max(s.x, b.leftBound), b.rightBound), y: b.floorY }))
+        kickRef.current() // bounds (re)loaded — ensure the loop is running
       })
     }
     fetchBounds()
@@ -117,10 +117,12 @@ export function App() {
         const bounds = boundsRef.current
         if (!bounds) return
         setState((cur) => releaseHeld(cur, performance.now(), bounds.rightBound, CLING_SNAP_PX))
+        kickRef.current() // resume the loop to animate the fall / cling
       } else {
         const cur = stateRef.current
         if (cur.mode === 'cling') {
           setState(tapCling(cur, performance.now()))
+          kickRef.current() // resume the loop to animate the drop
         } else {
           window.jpt.send('character:click')
         }
@@ -137,19 +139,34 @@ export function App() {
   }, [])
 
   // rAF tick loop — drives walk + fall integration + IPC position updates.
-  // Updater form so it composes with bounds-fetch's setState without races.
+  //
+  // PERF: a perpetual requestAnimationFrame keeps the (software-composited,
+  // transparent, always-on-top) compositor pipeline running at full frame
+  // rate 24/7 even when nothing changes — that pinned ~half a CPU core at
+  // idle. So the loop SELF-SUSPENDS once the character is stably idle: it
+  // sleeps with a single setTimeout until the idle→walk moment, producing
+  // zero frames meanwhile. Input/dialog handlers call kickRef.current() to
+  // wake it. Active-drag / dialog-open also suspend (no animation needed).
   useEffect(() => {
     let raf = 0
+    let wake: ReturnType<typeof setTimeout> | null = null
     let last = performance.now()
+    let stopped = false
+
+    const kick = () => {
+      if (wake != null) { clearTimeout(wake); wake = null }
+      if (raf === 0 && !stopped) { last = performance.now(); raf = requestAnimationFrame(loop) }
+    }
+
     const loop = (now: number) => {
+      raf = 0
+      if (stopped) return
       const dt = now - last
       last = now
-      // Don't tick while the user is actively dragging — drag handler is the
-      // sole owner of state during that period.
-      // Also don't tick while the dialog is open — character should freeze
-      // (spec §3.1: "进入 dialog open 子状态时角色固定不动直到对话框关闭").
+      // Suspend (no reschedule) while actively dragging — the drag handler
+      // owns position then — or while the dialog is open (character frozen,
+      // spec §3.1). Resumed by kick() on mouseup / dialog-close.
       if ((dragRef.current.down && dragRef.current.movedPast) || dialogOpenRef.current) {
-        raf = requestAnimationFrame(loop)
         return
       }
       const bounds = boundsRef.current
@@ -202,10 +219,28 @@ export function App() {
         setState(next)
         window.jpt.send('character:set-position', next.x, next.y)
       }
-      raf = requestAnimationFrame(loop)
+      // Schedule: keep animating only while something is actually moving.
+      // Stable idle (not mid-landing) → sleep until the idle→walk moment.
+      const stable = next.mode === 'idle' && !(next.squashUntilMs > now)
+      if (stable) {
+        // If no state change happened this tick, the visible frame may still
+        // be stale (e.g. landing.png after squash expired) — one clean render
+        // so the CSS breathing settles in before we sleep.
+        if (next === cur) setState((s) => ({ ...s }))
+        const delay = Math.max(0, next.pauseUntilMs - now) + 16
+        wake = setTimeout(() => { wake = null; last = performance.now(); raf = requestAnimationFrame(loop) }, delay)
+      } else {
+        raf = requestAnimationFrame(loop)
+      }
     }
+    kickRef.current = kick
     raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      stopped = true
+      if (raf) cancelAnimationFrame(raf)
+      if (wake != null) clearTimeout(wake)
+      kickRef.current = () => {}
+    }
   }, [])
 
   // Visual transform
@@ -214,6 +249,9 @@ export function App() {
   // fall-land handler sets squashUntilMs = now + 200 as that timer. No more
   // scale() squash — the real art shouldn't be distorted.
   const landingActive = state.squashUntilMs > performance.now()
+  // Idle breathing: the 2 stand frames cross-swap via a pure CSS keyframe
+  // (no React re-render, no JS timer) — see jpt-breath-a/b below.
+  const breathing = state.mode === 'idle' && !landingActive
   const transform = [
     `scaleX(${state.facing})`,
     isClinging ? 'rotate(90deg)' : '',
@@ -250,34 +288,53 @@ export function App() {
           transform: `translateY(${-sf.bobPx}px)`, // SDV-style walk bounce
         }}
       >
-        {ALL_FRAMES.map((src) => (
-          <img
-            key={src}
-            src={src}
-            alt="JPT"
-            draggable={false}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',      // square source art, never distorted in the 96x128 box
-              objectPosition: 'bottom',  // feet planted on the floor, not floating/centered
-              imageRendering: 'pixelated',
-              // landing.png is rendered bigger (grows up from the feet). Capped
-              // by the 96×128 character window — anything past that clips.
-              transform: src === landingUrl ? 'scale(1.2)' : undefined,
-              transformOrigin: 'bottom center',
-              // All frames stay mounted+decoded; only the active one is painted.
-              visibility: src === activeSrc ? 'visible' : 'hidden',
-            }}
-          />
-        ))}
+        {ALL_FRAMES.map((src) => {
+          const isStand = src === stand1Url || src === stand2Url
+          // While idle: both stand frames stay visible and a pure-CSS
+          // antiphase opacity keyframe swaps them (no re-render). Otherwise:
+          // the usual "only the active frame is painted" model.
+          const breathImg = breathing && isStand
+          return (
+            <img
+              key={src}
+              src={src}
+              alt="JPT"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',      // square source art, never distorted in the 96x128 box
+                objectPosition: 'bottom',  // feet planted on the floor, not floating/centered
+                imageRendering: 'pixelated',
+                // landing.png is rendered bigger (grows up from the feet). Capped
+                // by the 96×128 character window — anything past that clips.
+                transform: src === landingUrl ? 'scale(1.2)' : undefined,
+                transformOrigin: 'bottom center',
+                animation: breathImg
+                  ? `${src === stand1Url ? 'jpt-breath-a' : 'jpt-breath-b'} 1.8s infinite`
+                  : undefined,
+                visibility: breathImg ? 'visible' : src === activeSrc ? 'visible' : 'hidden',
+              }}
+            />
+          )
+        })}
       </div>
       <style>{`
         @keyframes jpt-sway {
           0%,100% { transform: translateX(0) rotate(0deg); }
           50%     { transform: translateX(1px) rotate(2deg); }
+        }
+        /* Idle breathing: hard 900ms swap between the 2 stand frames,
+           compositor-only (opacity), zero React re-renders. */
+        @keyframes jpt-breath-a {
+          0%,49.9%   { opacity: 1; }
+          50%,100%   { opacity: 0; }
+        }
+        @keyframes jpt-breath-b {
+          0%,49.9%   { opacity: 0; }
+          50%,100%   { opacity: 1; }
         }
       `}</style>
     </div>

@@ -165,9 +165,13 @@ export function createWelcomeWindow(): BrowserWindow {
   // Earlier "transparent + frameless" issues turned out to be renderer state bugs
   // (the Chrome_RenderWidgetHostHWND's WS_EX_TRANSPARENT is normal — clicks bubble
   // to parent BrowserWindow's WndProc and reach the React renderer).
+  // Sized to letter.png's aspect ratio (1080×1435 ≈ 0.753) so the letter art
+  // isn't distorted.
+  const W = 360
+  const H = 478
   const win = new BrowserWindow({
-    width: 580,
-    height: 440,
+    width: W,
+    height: H,
     title: 'JPT — 欢迎',
     frame: false,
     transparent: true,
@@ -184,8 +188,8 @@ export function createWelcomeWindow(): BrowserWindow {
     },
   })
   const { workArea } = screen.getPrimaryDisplay()
-  const x = workArea.x + Math.floor((workArea.width - 720) / 2)
-  const y = workArea.y + Math.floor((workArea.height - 480) / 2)
+  const x = workArea.x + Math.floor((workArea.width - W) / 2)
+  const y = workArea.y + Math.floor((workArea.height - H) / 2)
   win.setPosition(x, y)
   win.once('ready-to-show', () => win.focus())
 
