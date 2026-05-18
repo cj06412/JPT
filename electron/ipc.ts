@@ -1,14 +1,15 @@
-import { ipcMain, BrowserWindow, app } from 'electron'
-import { CHARACTER_W, CHARACTER_H, DIALOG_W, DIALOG_H, createSettingsWindow, floorGeometry, activeDisplay } from './window-manager'
+import { app, BrowserWindow, ipcMain } from 'electron'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { activeDisplay, CHARACTER_H, CHARACTER_W, createSettingsWindow, DIALOG_H, DIALOG_W, floorGeometry } from './window-manager'
 import { writePersona } from './agent/workdir'
-import type { JPTWindows } from './window-manager'
+import type { AgentManager } from './agent/manager'
 import type { AgentSession } from './agent/session'
 import type { ConfigStore } from './config-store'
 import type { HistoryStore } from './history-store'
+import type { JPTWindows } from './window-manager'
 import type { ConfigSnapshot } from '../src/shared/config'
 
-/** Single-instance settings window. Both the tray menu and the dialog renderer
- *  go through this to open settings. */
 const settingsState: { instance: BrowserWindow | null } = { instance: null }
 
 export function openSettingsWindow() {
@@ -20,7 +21,6 @@ export function openSettingsWindow() {
   settingsState.instance.on('closed', () => { settingsState.instance = null })
 }
 
-/** Same logic as character:click — wired here so the tray can reuse it. */
 export function toggleDialog(windows: JPTWindows) {
   if (windows.dialog.isVisible()) {
     windows.dialog.hide()
@@ -47,86 +47,114 @@ export interface IpcCallbacks {
 
 export function registerIpcHandlers(
   windows: JPTWindows,
-  session: AgentSession,
+  session: AgentSession | AgentManager,
   config: ConfigStore,
   history: HistoryStore,
   callbacks: IpcCallbacks,
 ) {
-  let sessionReady = false
+  let sessionReady = isAgentManager(session)
 
-  // Renderer queries current ready state on mount (covers the race where the
-  // system/init event fired before the dialog renderer registered its listener).
+  const setSessionReady = (ready: boolean) => {
+    sessionReady = ready
+    windows.dialog.webContents.send('dialog:session-ready', ready)
+  }
+
+  const surfaceError = (error: unknown) => {
+    const msg = error instanceof Error ? error.message : String(error)
+    windows.dialog.webContents.send('dialog:error', msg)
+    history.append({ ts: Date.now(), role: 'error', text: msg })
+  }
+
   ipcMain.handle('agent:is-ready', () => sessionReady)
 
-  // Settings IPC — renderer reads/writes config; main owns the file
   ipcMain.handle('settings:get', () => config.snapshot())
   ipcMain.handle('settings:set', async (_event, patch: Partial<ConfigSnapshot>) => {
     const snap = config.update(patch)
     if (patch.soundsEnabled !== undefined) {
       windows.dialog.webContents.send('settings:sounds-changed', snap.soundsEnabled)
     }
+    if (patch.agentBackend !== undefined && isAgentManager(session)) {
+      setSessionReady(false)
+      try {
+        await session.switchTo(snap.agentBackend)
+      } catch (e) {
+        surfaceError(e)
+        setSessionReady(true)
+      }
+    }
     if (patch.personaDoc !== undefined) {
       const changed = writePersona(app.getPath('userData'), snap.personaDoc)
-      if (changed) {
-        // Persona file changed — restart the Claude session so the new
-        // CLAUDE.md is picked up on the next message.
-        session.terminate()
-        await session.start()
+      if (changed && (!isAgentManager(session) || session.activeBackendId() === 'claude')) {
+        setSessionReady(false)
+        await session.clear()
       }
     }
     return snap
   })
 
-  // Character → main: position update.
-  // setBounds (not setPosition) — Electron on Win11 with transparent windows
-  // has a known issue where setPosition silently grows the window by 1px on
-  // each call. setBounds with explicit width/height every frame prevents drift.
+  ipcMain.handle('agent:get-backend', () => config.snapshot().agentBackend)
+
+  ipcMain.handle('agent:set-backend', async (_event, backend: ConfigSnapshot['agentBackend']) => {
+    const snap = config.update({ agentBackend: backend })
+    if (isAgentManager(session)) {
+      setSessionReady(false)
+      try {
+        await session.switchTo(backend)
+      } catch (e) {
+        surfaceError(e)
+        setSessionReady(true)
+      }
+    }
+    return snap.agentBackend
+  })
+
+  ipcMain.handle('agent:get-workdir', () => {
+    const snap = config.snapshot()
+    return snap.codexWorkdir || path.join(app.getPath('userData'), 'codex-workdir')
+  })
+
+  ipcMain.handle('agent:set-workdir', async (_event, workdir: string) => {
+    const resolved = path.resolve(workdir)
+    fs.mkdirSync(resolved, { recursive: true })
+    config.update({ codexWorkdir: resolved, codexThreadId: '' })
+    if (isAgentManager(session)) session.setCodexWorkdir(resolved)
+    if (config.snapshot().agentBackend === 'codex') {
+      setSessionReady(false)
+      await session.clear()
+    }
+    return resolved
+  })
+
   ipcMain.on('character:set-position', (_event, x: number, y: number) => {
     windows.character.setBounds({ x: Math.round(x), y: Math.round(y), width: CHARACTER_W, height: CHARACTER_H })
   })
 
-  // Character → main: walk bounds query (active screen + taskbar-autohide aware)
   ipcMain.handle('character:get-walk-bounds', () => floorGeometry())
 
-  // Character → main: click toggles dialog
   ipcMain.on('character:click', () => toggleDialog(windows))
 
-  // Renderer → main: open settings window (also reached via tray menu)
   ipcMain.on('settings:open', () => openSettingsWindow())
 
-  // Welcome letter close (click anywhere on the letter)
   ipcMain.on('welcome:close', () => callbacks.closeWelcome())
 
-  // Dialog → main: close request
   ipcMain.on('dialog:close', () => {
     windows.dialog.hide()
     windows.character.webContents.send('character:dialog-visibility', false)
   })
 
-  // Dialog → main: send user message
   ipcMain.on('dialog:user-send', (_event, message: string) => {
     history.append({ ts: Date.now(), role: 'user', text: message })
     session.send(message)
   })
 
-  // Dialog → main: /clear — reset Claude's conversation context.
-  // Cheapest correct way: terminate + restart the session (it re-loads
-  // workdir/CLAUDE.md persona fresh, no history replay).
   ipcMain.on('dialog:slash-clear', async () => {
-    session.terminate()
-    // Drop readiness while the new session spawns so the input is disabled
-    // and the user can't fire a message at a dead process (error-flash race).
-    // onSessionReady re-enables it when the fresh session is up.
-    sessionReady = false
-    windows.dialog.webContents.send('dialog:session-ready', false)
-    await session.start()
+    setSessionReady(false)
+    await session.clear()
   })
 
-  // Wire session callbacks → dialog renderer
   session.setCallbacks({
     onSessionReady: () => {
-      sessionReady = true
-      windows.dialog.webContents.send('dialog:session-ready')
+      setSessionReady(true)
     },
     onText: (chunk) => {
       windows.dialog.webContents.send('dialog:stream-token', chunk)
@@ -151,10 +179,11 @@ export function registerIpcHandlers(
       history.append({ ts: Date.now(), role: 'toolResult', summary, isError })
     },
     onProcessExit: () => {
-      sessionReady = false
-      // ClaudeSession already surfaces non-zero exits via onError with the
-      // accumulated stderr; this event is left informational so the renderer
-      // could disable input on a dead session, but no error bubble.
+      sessionReady = isAgentManager(session)
     },
   })
+}
+
+function isAgentManager(session: AgentSession | AgentManager): session is AgentManager {
+  return 'switchTo' in session
 }

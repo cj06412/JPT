@@ -146,6 +146,34 @@ export function App() {
         const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant') as { text: string } | undefined
         if (lastAssistant) navigator.clipboard?.writeText(lastAssistant.text).catch(() => {})
         setMsgs((p) => [...p, { role: 'assistant', text: lastAssistant ? '（已复制上一条回复）' : '（没有可复制的回复）' }])
+      } else if (slash.cmd === 'backend') {
+        if (!slash.backend) {
+          window.jpt.invoke<string>('agent:get-backend').then((backend) => {
+            setMsgs((p) => [...p, { role: 'assistant', text: `当前后端：${backend}` }])
+          })
+        } else {
+          setReady(false)
+          window.jpt.invoke<string>('agent:set-backend', slash.backend).then((backend) => {
+            setMsgs((p) => [...p, { role: 'assistant', text: `已切到 ${backend}。` }])
+          }).catch((e: unknown) => {
+            setReady(true)
+            setMsgs((p) => [...p, { role: 'error', text: e instanceof Error ? e.message : String(e) }])
+          })
+        }
+      } else if (slash.cmd === 'workdir') {
+        if (!slash.path) {
+          window.jpt.invoke<string>('agent:get-workdir').then((workdir) => {
+            setMsgs((p) => [...p, { role: 'assistant', text: `Codex 工作目录：${workdir}` }])
+          })
+        } else {
+          setReady(false)
+          window.jpt.invoke<string>('agent:set-workdir', slash.path).then((workdir) => {
+            setMsgs((p) => [...p, { role: 'assistant', text: `Codex 工作目录已设为：${workdir}` }])
+          }).catch((e: unknown) => {
+            setReady(true)
+            setMsgs((p) => [...p, { role: 'error', text: e instanceof Error ? e.message : String(e) }])
+          })
+        }
       } else {
         setMsgs((p) => [...p, { role: 'assistant', text: slashHelpText() }])
       }

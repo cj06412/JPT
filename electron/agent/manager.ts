@@ -46,6 +46,11 @@ export class AgentManager implements AgentSession {
     return this.active().id
   }
 
+  setCodexWorkdir(workdir: string): void {
+    const codex = this.backends.codex as AgentSession & { setWorkdir?: (workdir: string, threadId?: string) => void }
+    codex.setWorkdir?.(workdir, '')
+  }
+
   private async sendAsync(message: string): Promise<void> {
     const backend = this.active()
     if (!backend.isRunning()) await backend.start()

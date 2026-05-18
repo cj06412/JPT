@@ -19,6 +19,32 @@ export function App() {
       <h2 style={{ margin: 0, fontSize: 18 }}>JPT 设置</h2>
 
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span>AI 后端</span>
+        <select
+          value={cfg.agentBackend}
+          onChange={(e) => update({ agentBackend: e.target.value as ConfigSnapshot['agentBackend'] })}
+          style={inputStyle}
+        >
+          <option value="codex">Codex</option>
+          <option value="claude">Claude</option>
+        </select>
+      </label>
+
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span>Codex 工作目录</span>
+        <input
+          value={cfg.codexWorkdir}
+          onChange={(e) => update({ codexWorkdir: e.target.value })}
+          placeholder="%APPDATA%\\JPT\\codex-workdir"
+          style={inputStyle}
+        />
+      </label>
+
+      <div style={{ fontSize: 12, opacity: 0.8, lineHeight: 1.5 }}>
+        Codex 默认完整 agent；JPT 固定阻止删除整个文件。空闲 20 分钟后会回收 Codex 后端。
+      </div>
+
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span>角色名（对话框名牌）</span>
         <input
           value={cfg.characterDisplayName}

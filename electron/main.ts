@@ -5,6 +5,9 @@ import * as path from 'node:path'
 import { createWindows, JPTWindows, createWelcomeWindow } from './window-manager'
 import { registerIpcHandlers, toggleDialog, openSettingsWindow } from './ipc'
 import { ClaudeSession } from './agent/claude'
+import { CodexAppServerClient } from './agent/codex-app-server'
+import { CodexBackend } from './agent/codex'
+import { AgentManager } from './agent/manager'
 import { ensureWorkdir } from './agent/workdir'
 import { ConfigStore } from './config-store'
 import { HistoryStore } from './history-store'
@@ -34,7 +37,7 @@ const rawStore = new Store<ConfigSnapshot>()
 const configStore = new ConfigStore(rawStore)
 
 let windows: JPTWindows | null = null
-let session: ClaudeSession | null = null
+let session: AgentManager | null = null
 let tray: Tray | null = null
 let welcomeWin: BrowserWindow | null = null
 
@@ -42,7 +45,20 @@ app.whenReady().then(async () => {
   windows = createWindows()
   const workdir = ensureWorkdir(app.getPath('userData'), configStore.snapshot().personaDoc)
   const historyStore = new HistoryStore(app.getPath('userData'))
-  session = new ClaudeSession(workdir)
+  const snapshot = configStore.snapshot()
+  const codexWorkdir = snapshot.codexWorkdir || path.join(app.getPath('userData'), 'codex-workdir')
+  fs.mkdirSync(codexWorkdir, { recursive: true })
+  const claude = new ClaudeSession(workdir)
+  const codex = new CodexBackend(new CodexAppServerClient(), {
+    workdir: codexWorkdir,
+    threadId: snapshot.codexThreadId,
+    idleTimeoutMs: snapshot.codexIdleTimeoutMs,
+    saveThreadId: (threadId) => configStore.update({ codexThreadId: threadId }),
+  })
+  session = new AgentManager(
+    () => configStore.snapshot().agentBackend,
+    { codex, claude },
+  )
   registerIpcHandlers(windows, session, configStore, historyStore, {
     closeWelcome: () => { welcomeWin?.close() },
   })
@@ -56,8 +72,6 @@ app.whenReady().then(async () => {
       windows.character.webContents.send('character:dialog-visibility', false)
     }
   })
-
-  await session.start()
 
   // Proactive companionship: every 10 min check whether a nudge is due.
   // Only pushed when the dialog is already open (never pop a window at the

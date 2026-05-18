@@ -42,6 +42,12 @@ export class CodexBackend implements AgentSession {
     this.cb = { ...this.cb, ...cb }
   }
 
+  setWorkdir(workdir: string, threadId: string = ''): void {
+    this.options = { ...this.options, workdir, threadId }
+    this.threadId = threadId
+    this.currentResponseText = ''
+  }
+
   async start(): Promise<void> {
     if (this.running) return
     await this.client.start()

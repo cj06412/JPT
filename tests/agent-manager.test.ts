@@ -17,6 +17,13 @@ function fakeBackend(id: AgentBackendId): AgentSession {
   }
 }
 
+function fakeCodexBackend(): AgentSession & { setWorkdir: ReturnType<typeof vi.fn> } {
+  return {
+    ...fakeBackend('codex'),
+    setWorkdir: vi.fn(),
+  }
+}
+
 describe('AgentManager', () => {
   it('starts only the selected backend lazily on send', async () => {
     const codex = fakeBackend('codex')
@@ -49,5 +56,16 @@ describe('AgentManager', () => {
     await manager.clear()
 
     expect(codex.clear).toHaveBeenCalled()
+  })
+
+  it('updates the Codex workdir without touching Claude', () => {
+    const codex = fakeCodexBackend()
+    const claude = fakeBackend('claude')
+    const manager = new AgentManager(() => 'codex', { codex, claude })
+
+    manager.setCodexWorkdir('C:\\next')
+
+    expect(codex.setWorkdir).toHaveBeenCalledWith('C:\\next', '')
+    expect(claude.clear).not.toHaveBeenCalled()
   })
 })

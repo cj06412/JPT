@@ -8,7 +8,7 @@ Branch: `codex/codex-backend`
 
 ## Baseline
 
-- [x] `npm test` passes in worktree: 57 tests
+- [x] `npm test` passes in worktree: 87 tests
 - [x] `npm run build` passes in worktree
 
 ## Stage 1: Settings, Slash Parsing, and Interface Shape
@@ -39,15 +39,15 @@ Status: completed.
 
 ## Stage 4: App Wiring and UI
 
-- [ ] Task 12: Main process wiring
-- [ ] Task 13: Backend and workdir IPC
-- [ ] Task 14: Settings UI
+- [x] Task 12: Main process wiring
+- [x] Task 13: Backend and workdir IPC
+- [x] Task 14: Settings UI
 
-Status: pending.
+Status: completed.
 
 ## Stage 5: Final Verification and Acceptance
 
-- [ ] Task 15: Full automated verification
+- [x] Task 15: Full automated verification
 - [ ] Task 16: Manual smoke test / acceptance log
 
-Status: pending.
+Status: manual smoke test pending.
