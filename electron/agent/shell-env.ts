@@ -16,6 +16,23 @@ export function findBinaryInPaths(
   return null
 }
 
+export function candidateBinaryNames(name: string, isWindows: boolean): string[] {
+  return isWindows ? [`${name}.exe`, `${name}.cmd`, name] : [name]
+}
+
+function resolveFromPath(name: string, isWindows: boolean): string | null {
+  const pathVar = process.env.PATH || ''
+  const sep = isWindows ? ';' : ':'
+  const pathDirs = pathVar.split(sep).filter(Boolean)
+  for (const dir of pathDirs) {
+    for (const binary of candidateBinaryNames(name, isWindows)) {
+      const candidate = path.join(dir, binary)
+      if (fs.existsSync(candidate)) return candidate
+    }
+  }
+  return null
+}
+
 /**
  * Resolve `claude` binary path.
  *
@@ -43,19 +60,25 @@ export function resolveClaudePath(): string | null {
 
   const direct = findBinaryInPaths('claude', candidates)
   if (direct) return direct
+  return resolveFromPath('claude', isWindows)
+}
 
-  // Fallback: scan PATH from current process env. On Windows, npm-installed `claude`
-  // is `claude.cmd` (not `claude.exe`) — probe both so a custom npm prefix still resolves.
-  const pathVar = process.env.PATH || ''
-  const sep = isWindows ? ';' : ':'
-  const exts = isWindows ? ['.exe', '.cmd'] : ['']
-  const pathDirs = pathVar.split(sep).filter(Boolean)
-  for (const dir of pathDirs) {
-    for (const ext of exts) {
-      const candidate = path.join(dir, `claude${ext}`)
-      if (fs.existsSync(candidate)) return candidate
-    }
-  }
+export function resolveCodexPath(): string | null {
+  const home = os.homedir()
+  const isWindows = process.platform === 'win32'
 
-  return null
+  const candidates: string[] = isWindows
+    ? [
+        path.join(home, 'AppData', 'Roaming', 'npm', 'codex.cmd'),
+        path.join(home, 'AppData', 'Roaming', 'npm', 'codex'),
+      ]
+    : [
+        path.join(home, '.local', 'bin', 'codex'),
+        '/opt/homebrew/bin/codex',
+        '/usr/local/bin/codex',
+      ]
+
+  const direct = findBinaryInPaths('codex', candidates)
+  if (direct) return direct
+  return resolveFromPath('codex', isWindows)
 }

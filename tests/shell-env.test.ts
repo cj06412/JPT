@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { findBinaryInPaths } from '../electron/agent/shell-env'
+import { candidateBinaryNames, findBinaryInPaths } from '../electron/agent/shell-env'
 import * as fs from 'node:fs'
 
 vi.mock('node:fs')
@@ -37,5 +37,15 @@ describe('findBinaryInPaths', () => {
       '/usr/local/bin/claude',
     ])
     expect(result).toBe('/opt/homebrew/bin/claude')
+  })
+})
+
+describe('candidateBinaryNames', () => {
+  it('includes Windows cmd shims for codex', () => {
+    expect(candidateBinaryNames('codex', true)).toEqual(['codex.exe', 'codex.cmd', 'codex'])
+  })
+
+  it('keeps Unix names extensionless', () => {
+    expect(candidateBinaryNames('codex', false)).toEqual(['codex'])
   })
 })

@@ -21,13 +21,13 @@ Status: completed.
 
 ## Stage 2: Codex Protocol, Guard, and Event Mapping
 
-- [ ] Task 4: Codex binary resolution
+- [x] Task 4: Codex binary resolution
 - [ ] Task 5: Minimal Codex app-server protocol types
 - [ ] Task 6: Codex JSON-RPC client framing
 - [ ] Task 7: Delete guard
 - [ ] Task 8: Codex event mapper
 
-Status: pending.
+Status: in progress.
 
 ## Stage 3: Codex Backend and Manager
 
