@@ -15,9 +15,9 @@ Branch: `codex/codex-backend`
 
 - [x] Task 1: Config defaults for dual backends
 - [x] Task 2: Backend and workdir slash commands
-- [ ] Task 3: Backend-neutral session interface
+- [x] Task 3: Backend-neutral session interface
 
-Status: in progress.
+Status: completed.
 
 ## Stage 2: Codex Protocol, Guard, and Event Mapping
 

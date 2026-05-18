@@ -1,4 +1,5 @@
 import type { AgentMessage } from '../../src/shared/messages'
+import type { AgentBackendId } from '../../src/shared/config'
 
 export interface AgentSessionCallbacks {
   onText: (chunk: string) => void
@@ -11,11 +12,13 @@ export interface AgentSessionCallbacks {
 }
 
 export interface AgentSession {
+  id: AgentBackendId
   isRunning(): boolean
   isBusy(): boolean
   history(): AgentMessage[]
   start(): Promise<void>
   send(message: string): void
+  clear(): Promise<void>
   terminate(): void
   setCallbacks(cb: Partial<AgentSessionCallbacks>): void
 }

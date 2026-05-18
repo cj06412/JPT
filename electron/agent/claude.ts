@@ -12,6 +12,7 @@ import type { AgentSession, AgentSessionCallbacks } from './session'
 const STDERR_BUFFER_CAP = 8192
 
 export class ClaudeSession implements AgentSession {
+  readonly id = 'claude' as const
   private proc: ChildProcess | null = null
   private buffer = new NdjsonBuffer()
   private running = false
@@ -149,6 +150,12 @@ export class ClaudeSession implements AgentSession {
       message: { role: 'user', content: message },
     }
     this.proc.stdin.write(JSON.stringify(payload) + '\n')
+  }
+
+  async clear(): Promise<void> {
+    this.terminate()
+    this.msgs = []
+    await this.start()
   }
 
   terminate(): void {
