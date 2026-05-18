@@ -16,6 +16,25 @@ describe('parseSlash', () => {
   it('parses /help', () => {
     expect(parseSlash('/help')).toEqual({ cmd: 'help' })
   })
+  it('parses /backend without argument', () => {
+    expect(parseSlash('/backend')).toEqual({ cmd: 'backend' })
+  })
+  it('parses /backend codex and /backend claude', () => {
+    expect(parseSlash('/backend codex')).toEqual({ cmd: 'backend', backend: 'codex' })
+    expect(parseSlash('/backend claude')).toEqual({ cmd: 'backend', backend: 'claude' })
+  })
+  it('unknown /backend target returns help', () => {
+    expect(parseSlash('/backend gpt')).toEqual({ cmd: 'help' })
+  })
+  it('parses /workdir without path', () => {
+    expect(parseSlash('/workdir')).toEqual({ cmd: 'workdir' })
+  })
+  it('parses /workdir with a Windows path', () => {
+    expect(parseSlash('/workdir C:\\Users\\LeoinTube\\JPT')).toEqual({
+      cmd: 'workdir',
+      path: 'C:\\Users\\LeoinTube\\JPT',
+    })
+  })
   it('unknown slash returns help', () => {
     expect(parseSlash('/wat')).toEqual({ cmd: 'help' })
   })
