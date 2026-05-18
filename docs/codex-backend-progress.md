@@ -32,7 +32,7 @@ Status: completed.
 ## Stage 3: Codex Backend and Manager
 
 - [x] Task 9: Codex backend lifecycle
-- [ ] Task 10: Real Codex app-server client
+- [x] Task 10: Real Codex app-server client
 - [ ] Task 11: Agent manager
 
 Status: in progress.

@@ -15,7 +15,7 @@ function fakeClient(): FakeCodexClient {
     turnStart: vi.fn().mockResolvedValue('turn-1'),
     turnInterrupt: vi.fn().mockResolvedValue(undefined),
     onNotification: vi.fn((nextListener) => { listener = nextListener }),
-    emit: (notification) => listener(notification),
+    emit: (notification: { method: string; params?: unknown }) => listener(notification),
   }
   return client
 }
