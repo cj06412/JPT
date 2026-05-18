@@ -1,16 +1,18 @@
 import portraitDefault from '../../assets/sprites/jpt-portrait.png'
+import portraitHappy from '../../assets/sprites/jpt-happy.png'
+import portraitThink from '../../assets/sprites/jpt-thinking.png'
+import portraitConfused from '../../assets/sprites/jpt-confused.png'
+import portraitSad from '../../assets/sprites/jpt-sad.png'
 
-export type Expression = 'default' | 'smile' | 'think' | 'confused'
+export type Expression = 'default' | 'smile' | 'think' | 'confused' | 'sad'
 
-// Expression switching is wired (dialog sets think/smile/confused on
-// send/complete/error) but ALL map to the one real portrait for now —
-// jpt-portrait-{smile,think,confused}.png are still red-square placeholders.
-// When real expression art lands, point these back at the per-expression files.
+// Real expression art ('smile' uses jpt-happy.png).
 const EXPR_SRC: Record<Expression, string> = {
   default: portraitDefault,
-  smile: portraitDefault,
-  think: portraitDefault,
-  confused: portraitDefault,
+  smile: portraitHappy,
+  think: portraitThink,
+  confused: portraitConfused,
+  sad: portraitSad,
 }
 
 export interface PortraitPanelProps {

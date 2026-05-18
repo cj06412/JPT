@@ -26,6 +26,18 @@ type Msg =
 // hear. Module-level so it persists across renders. ~140ms between blips.
 let lastType = 0
 
+// When 小屿's message sounds down, JPT shows the sad/empathetic face and keeps
+// it through the whole reply (no flip to think/smile). Tweak this list freely.
+const SAD_WORDS = [
+  '难过', '不开心', '想哭', '哭了', '大哭', '委屈', '难受', '心累', '好累', '累死',
+  '崩溃', '沮丧', '郁闷', '烦死', '好烦', '焦虑', '压力', '失眠', '孤独', '害怕',
+  '担心', '分手', '吵架', '伤心', '心情不好', '不想活', '没意思', '撑不住', 'emo', '丧',
+]
+function isSad(text: string): boolean {
+  const t = text.toLowerCase()
+  return SAD_WORDS.some((w) => t.includes(w))
+}
+
 export function App() {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -34,6 +46,9 @@ export function App() {
   const [expression, setExpression] = useState<Expression>('default')
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  // true while the current turn was started by a "down" message — keeps the
+  // sad face through the whole reply instead of flipping to think/smile.
+  const sadTurnRef = useRef(false)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -77,7 +92,7 @@ export function App() {
     })
     const offComplete = window.jpt.on('dialog:turn-complete', () => {
       setBusy(false)
-      setExpression('smile')
+      setExpression(sadTurnRef.current ? 'sad' : 'smile')
       playSound('complete')
     })
     const offError = window.jpt.on('dialog:error', (...args: unknown[]) => {
@@ -89,7 +104,7 @@ export function App() {
     const offToolUse = window.jpt.on('dialog:tool-use', (...args: unknown[]) => {
       const { tool, summary } = args[0] as { tool: string; summary: string }
       setMsgs((prev) => [...prev, { role: 'tool', tool, summary }])
-      setExpression('think')
+      setExpression(sadTurnRef.current ? 'sad' : 'think')
     })
     const offToolResult = window.jpt.on('dialog:tool-result', (...args: unknown[]) => {
       const { summary, isError } = args[0] as { summary: string; isError: boolean }
@@ -136,10 +151,12 @@ export function App() {
       }
       return
     }
+    const sad = isSad(text)
+    sadTurnRef.current = sad
     setMsgs((p) => [...p, { role: 'user', text }])
     setInput('')
     setBusy(true)
-    setExpression('think')
+    setExpression(sad ? 'sad' : 'think')
     window.jpt.send('dialog:user-send', text)
     playSound('click')
   }
