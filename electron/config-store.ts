@@ -26,6 +26,11 @@ export class ConfigStore {
       launchAtStartup: this.store.get('launchAtStartup', DEFAULT_CONFIG.launchAtStartup)!,
       personaDoc: this.store.get('personaDoc', DEFAULT_CONFIG.personaDoc)!,
       proactiveMessages: this.store.get('proactiveMessages', DEFAULT_CONFIG.proactiveMessages)!,
+      agentBackend: this.store.get('agentBackend', DEFAULT_CONFIG.agentBackend)!,
+      codexWorkdir: this.store.get('codexWorkdir', DEFAULT_CONFIG.codexWorkdir)!,
+      codexIdleTimeoutMs: this.store.get('codexIdleTimeoutMs', DEFAULT_CONFIG.codexIdleTimeoutMs)!,
+      codexNoDeleteFiles: this.store.get('codexNoDeleteFiles', DEFAULT_CONFIG.codexNoDeleteFiles)!,
+      codexThreadId: this.store.get('codexThreadId', DEFAULT_CONFIG.codexThreadId)!,
     }
   }
 

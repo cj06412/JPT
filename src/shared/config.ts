@@ -1,4 +1,5 @@
 export type FontSize = 'small' | 'medium' | 'large'
+export type AgentBackendId = 'codex' | 'claude'
 
 export interface ConfigSnapshot {
   characterDisplayName: string
@@ -8,6 +9,11 @@ export interface ConfigSnapshot {
   launchAtStartup: boolean
   personaDoc: string         // raw markdown that gets written to workdir/CLAUDE.md on save
   proactiveMessages: boolean // opt-in time-based companionship nudges (spec §8.1, default off)
+  agentBackend: AgentBackendId
+  codexWorkdir: string
+  codexIdleTimeoutMs: number
+  codexNoDeleteFiles: true
+  codexThreadId: string
 }
 
 export const DEFAULT_CONFIG: ConfigSnapshot = {
@@ -19,4 +25,9 @@ export const DEFAULT_CONFIG: ConfigSnapshot = {
   // empty means "use placeholder persona from workdir.ts"; user can edit via settings window
   personaDoc: '',
   proactiveMessages: false,
+  agentBackend: 'codex',
+  codexWorkdir: '',
+  codexIdleTimeoutMs: 20 * 60_000,
+  codexNoDeleteFiles: true,
+  codexThreadId: '',
 }

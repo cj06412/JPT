@@ -29,6 +29,11 @@ describe('ConfigStore', () => {
     expect(snap.soundsEnabled).toBe(true)
     expect(snap.launchAtStartup).toBe(true)
     expect(snap.proactiveMessages).toBe(false)
+    expect(snap.agentBackend).toBe('codex')
+    expect(snap.codexWorkdir).toBe('')
+    expect(snap.codexIdleTimeoutMs).toBe(20 * 60_000)
+    expect(snap.codexNoDeleteFiles).toBe(true)
+    expect(snap.codexThreadId).toBe('')
   })
 
   it('applies partial updates without dropping other fields', () => {
@@ -42,5 +47,17 @@ describe('ConfigStore', () => {
     store.update({ soundsEnabled: false })
     expect(store.snapshot().soundsEnabled).toBe(false)
     expect(store.snapshot().soundsEnabled).toBe(false)
+  })
+
+  it('persists Codex backend settings', () => {
+    store.update({
+      agentBackend: 'claude',
+      codexWorkdir: 'C:\\Users\\LeoinTube\\project',
+      codexThreadId: 'thread-123',
+    })
+    const snap = store.snapshot()
+    expect(snap.agentBackend).toBe('claude')
+    expect(snap.codexWorkdir).toBe('C:\\Users\\LeoinTube\\project')
+    expect(snap.codexThreadId).toBe('thread-123')
   })
 })
