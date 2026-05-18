@@ -1,5 +1,6 @@
 # Visual brainstorm artifacts (kept outside repo intentionally)
 .superpowers/
+.worktrees/
 
 # Node / Electron
 node_modules/
