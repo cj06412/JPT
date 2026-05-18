@@ -31,11 +31,11 @@ Status: completed.
 
 ## Stage 3: Codex Backend and Manager
 
-- [ ] Task 9: Codex backend lifecycle
+- [x] Task 9: Codex backend lifecycle
 - [ ] Task 10: Real Codex app-server client
 - [ ] Task 11: Agent manager
 
-Status: pending.
+Status: in progress.
 
 ## Stage 4: App Wiring and UI
 
