@@ -23,7 +23,7 @@ Status: completed.
 
 - [x] Task 4: Codex binary resolution
 - [x] Task 5: Minimal Codex app-server protocol types
-- [ ] Task 6: Codex JSON-RPC client framing
+- [x] Task 6: Codex JSON-RPC client framing
 - [ ] Task 7: Delete guard
 - [ ] Task 8: Codex event mapper
 
