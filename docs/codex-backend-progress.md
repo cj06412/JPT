@@ -25,9 +25,9 @@ Status: completed.
 - [x] Task 5: Minimal Codex app-server protocol types
 - [x] Task 6: Codex JSON-RPC client framing
 - [x] Task 7: Delete guard
-- [ ] Task 8: Codex event mapper
+- [x] Task 8: Codex event mapper
 
-Status: in progress.
+Status: completed.
 
 ## Stage 3: Codex Backend and Manager
 
