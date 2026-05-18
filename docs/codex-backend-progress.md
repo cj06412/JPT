@@ -33,9 +33,9 @@ Status: completed.
 
 - [x] Task 9: Codex backend lifecycle
 - [x] Task 10: Real Codex app-server client
-- [ ] Task 11: Agent manager
+- [x] Task 11: Agent manager
 
-Status: in progress.
+Status: completed.
 
 ## Stage 4: App Wiring and UI
 
