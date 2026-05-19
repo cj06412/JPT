@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { initialState, tick, CharState, beginHeld, updateHeld, releaseHeld, tapCling, IDLE_MS } from './state-machine'
 import { fallStep } from './physics'
 import { spriteFrame } from './sprite-sheet'
+import { nextLoopSchedule } from './scheduler'
 import stand1Url from '../../assets/sprites/jpt-stand1.png'
 import stand2Url from '../../assets/sprites/jpt-stand2.png'
 import walk1Url from '../../assets/sprites/walk1.png'
@@ -221,17 +222,23 @@ export function App() {
       }
       // Schedule: keep animating only while something is actually moving.
       // Stable idle (not mid-landing) → sleep until the idle→walk moment.
-      const stable = next.mode === 'idle' && !(next.squashUntilMs > now)
-      if (stable) {
+      const schedule = nextLoopSchedule({
+        mode: next.mode,
+        now,
+        pauseUntilMs: next.pauseUntilMs,
+        squashUntilMs: next.squashUntilMs,
+      })
+      if (schedule.resetClock) {
         // If no state change happened this tick, the visible frame may still
         // be stale (e.g. landing.png after squash expired) — one clean render
         // so the CSS breathing settles in before we sleep.
         if (next === cur) setState((s) => ({ ...s }))
-        const delay = Math.max(0, next.pauseUntilMs - now) + 16
-        wake = setTimeout(() => { wake = null; last = performance.now(); raf = requestAnimationFrame(loop) }, delay)
-      } else {
-        raf = requestAnimationFrame(loop)
       }
+      wake = setTimeout(() => {
+        wake = null
+        if (schedule.resetClock) last = performance.now()
+        raf = requestAnimationFrame(loop)
+      }, schedule.delayMs)
     }
     kickRef.current = kick
     raf = requestAnimationFrame(loop)
