@@ -54,6 +54,33 @@ description: Use when replying to 小屿 to flavor tone with real chat-history v
 - （占位：贴 5-10 条真实对话片段，体现节奏和温度）
 `
 
+export function defaultCodexWorkdir(basePath: string): string {
+  return path.join(basePath, 'codex-workdir')
+}
+
+function codexAgentsPersona(basePath: string): string {
+  const sourcePath = path.join(basePath, 'workdir', 'CLAUDE.md')
+  return fs.existsSync(sourcePath)
+    ? fs.readFileSync(sourcePath, 'utf-8')
+    : PLACEHOLDER_PERSONA
+}
+
+export function codexAgentsFileMatchesPersona(basePath: string): boolean {
+  const agentsPath = path.join(defaultCodexWorkdir(basePath), 'AGENTS.md')
+  return fs.existsSync(agentsPath) && fs.readFileSync(agentsPath, 'utf-8') === codexAgentsPersona(basePath)
+}
+
+export function ensureCodexAgentsFile(basePath: string): string {
+  const codexWorkdir = defaultCodexWorkdir(basePath)
+  fs.mkdirSync(codexWorkdir, { recursive: true })
+  const agentsPath = path.join(codexWorkdir, 'AGENTS.md')
+  const persona = codexAgentsPersona(basePath)
+  if (!fs.existsSync(agentsPath) || fs.readFileSync(agentsPath, 'utf-8') !== persona) {
+    fs.writeFileSync(agentsPath, persona, 'utf-8')
+  }
+  return agentsPath
+}
+
 /**
  * Ensure `<basePath>/workdir/CLAUDE.md` exists. Creates the directory if missing.
  * When `personaDoc` is provided (non-empty), it is written as the persona
@@ -83,6 +110,7 @@ export function ensureWorkdir(basePath: string, personaDoc?: string): string {
   if (!fs.existsSync(skillPath)) {
     fs.writeFileSync(skillPath, WECHAT_SKILL_TEMPLATE, 'utf-8')
   }
+  ensureCodexAgentsFile(basePath)
   return workdir
 }
 
@@ -97,5 +125,6 @@ export function writePersona(basePath: string, personaDoc: string): boolean {
   const workdir = path.join(basePath, 'workdir')
   fs.mkdirSync(workdir, { recursive: true })
   fs.writeFileSync(path.join(workdir, 'CLAUDE.md'), personaDoc, 'utf-8')
+  ensureCodexAgentsFile(basePath)
   return true
 }

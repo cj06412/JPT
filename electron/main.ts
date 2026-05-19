@@ -8,7 +8,7 @@ import { ClaudeSession } from './agent/claude'
 import { CodexAppServerClient } from './agent/codex-app-server'
 import { CodexBackend } from './agent/codex'
 import { AgentManager } from './agent/manager'
-import { ensureWorkdir } from './agent/workdir'
+import { codexAgentsFileMatchesPersona, defaultCodexWorkdir, ensureWorkdir } from './agent/workdir'
 import { ConfigStore } from './config-store'
 import { HistoryStore } from './history-store'
 import { createTray, trayIconPath } from './tray'
@@ -43,10 +43,15 @@ let welcomeWin: BrowserWindow | null = null
 
 app.whenReady().then(async () => {
   windows = createWindows()
-  const workdir = ensureWorkdir(app.getPath('userData'), configStore.snapshot().personaDoc)
-  const historyStore = new HistoryStore(app.getPath('userData'))
+  const userDataPath = app.getPath('userData')
+  const codexAgentsWasCurrent = codexAgentsFileMatchesPersona(userDataPath)
+  const workdir = ensureWorkdir(userDataPath, configStore.snapshot().personaDoc)
+  if (!codexAgentsWasCurrent && configStore.snapshot().codexThreadId) {
+    configStore.update({ codexThreadId: '' })
+  }
+  const historyStore = new HistoryStore(userDataPath)
   const snapshot = configStore.snapshot()
-  const codexWorkdir = snapshot.codexWorkdir || path.join(app.getPath('userData'), 'codex-workdir')
+  const codexWorkdir = snapshot.codexWorkdir || defaultCodexWorkdir(userDataPath)
   fs.mkdirSync(codexWorkdir, { recursive: true })
   const claude = new ClaudeSession(workdir)
   const codex = new CodexBackend(new CodexAppServerClient(), {

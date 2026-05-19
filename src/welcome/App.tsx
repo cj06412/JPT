@@ -3,18 +3,13 @@ import { theme } from '@shared/theme'
 import letterUrl from '../../assets/sprites/letter.png'
 
 // Replace with the real letter before gifting (gift-ship checklist).
-const LETTER = `亲爱的小屿：
+const BODY = `亲爱的小屿:
 
-这是一个会动的小礼物。
+这是一个会动的520小礼物。
 
-桌面底部那个像素小人是我（JPT），
-点它就能跟我聊天。我擅长帮你写论文、
-聊统计、当树洞、改稿、翻译…
-有任何疑惑都来找我。
-
-—— 你的男朋友 · 2026 春
-
-PS: 关掉这封信我就开始上岗啦 :)`
+桌面底部那个像素小人是我(JPT),点它就能跟我聊天。我擅长帮你写论文、聊统计、当树洞、改稿、翻译…有任何疑惑都来找我。`
+const SIGN = '—— CJJJ · 2026 夏'
+const PS = 'PS: 关掉这封信我就开始上岗啦 :)'
 
 function close() {
   window.jpt.send('welcome:close')
@@ -55,14 +50,15 @@ export function App() {
           left: '13%',
           right: '13%',
           overflow: 'auto',
-          whiteSpace: 'pre-line',
           fontFamily: theme.fontPixel,
           fontSize: 14,
           lineHeight: 1.9,
           color: theme.paperInk,
         }}
       >
-        {LETTER}
+        <div style={{ whiteSpace: 'pre-wrap' }}>{BODY}</div>
+        <div style={{ textAlign: 'right', marginTop: '1.2em' }}>{SIGN}</div>
+        <div style={{ marginTop: '1.2em' }}>{PS}</div>
       </div>
     </div>
   )

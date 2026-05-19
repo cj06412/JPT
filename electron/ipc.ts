@@ -97,7 +97,10 @@ export function registerIpcHandlers(
     }
     if (patch.personaDoc !== undefined) {
       const changed = writePersona(app.getPath('userData'), snap.personaDoc)
-      if (changed && (!isAgentManager(session) || session.activeBackendId() === 'claude')) {
+      if (changed) {
+        config.update({ codexThreadId: '' })
+      }
+      if (changed && shouldClearForPersonaChange(session)) {
         setSessionReady(false)
         await session.clear()
       }
@@ -199,4 +202,10 @@ export function registerIpcHandlers(
 
 function isAgentManager(session: AgentSession | AgentManager): session is AgentManager {
   return 'switchTo' in session
+}
+
+function shouldClearForPersonaChange(session: AgentSession | AgentManager): boolean {
+  if (!isAgentManager(session)) return true
+  const activeId = session.activeBackendId()
+  return activeId === 'claude' || (activeId === 'codex' && session.isRunning())
 }
