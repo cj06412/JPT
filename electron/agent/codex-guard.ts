@@ -14,6 +14,15 @@ export function isDeletionCommand(command: string): boolean {
   return normalized.some((token) => DELETE_COMMANDS.has(token))
 }
 
+export function blocksClientRequest(method: string, params: unknown): boolean {
+  if (method === 'fs/remove') return true
+  if (method !== 'command/exec') return false
+  if (!params || typeof params !== 'object') return false
+  const command = (params as { command?: unknown }).command
+  if (!Array.isArray(command)) return false
+  return isDeletionCommand(command.map(String).join(' '))
+}
+
 export function diffDeletesWholeFile(diff: string): boolean {
   const lines = diff.split(/\r?\n/)
   if (lines.some((line) => line.startsWith('deleted file mode'))) return true

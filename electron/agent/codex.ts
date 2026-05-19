@@ -17,6 +17,7 @@ export interface CodexAppServerLike {
   turnStart(threadId: string, text: string): Promise<string>
   turnInterrupt(threadId: string, turnId: string): Promise<void>
   onNotification(listener: (notification: { method: string; params?: unknown }) => void): void
+  onExit?(listener: () => void): void
 }
 
 export class CodexBackend implements AgentSession {
@@ -32,6 +33,7 @@ export class CodexBackend implements AgentSession {
   constructor(private client: CodexAppServerLike, private options: CodexThreadOptions) {
     this.threadId = options.threadId
     this.client.onNotification((notification) => this.handleNotification(notification))
+    this.client.onExit?.(() => this.handleProcessExit())
   }
 
   isRunning() { return this.running }
@@ -136,6 +138,16 @@ export class CodexBackend implements AgentSession {
       this.msgs.push({ role: 'assistant', text: this.currentResponseText })
       this.currentResponseText = ''
     }
+  }
+
+  private handleProcessExit(): void {
+    if (this.idleTimer) clearTimeout(this.idleTimer)
+    this.idleTimer = null
+    const wasActive = this.running || this.busy
+    this.running = false
+    this.busy = false
+    this.currentResponseText = ''
+    if (wasActive) this.cb.onProcessExit?.()
   }
 
   private bumpIdleTimer(): void {

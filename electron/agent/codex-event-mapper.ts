@@ -1,4 +1,4 @@
-import { deletionBlockMessage, diffDeletesWholeFile } from './codex-guard'
+import { deletionBlockMessage, diffDeletesWholeFile, isDeletionCommand } from './codex-guard'
 import type { AgentSessionCallbacks } from './session'
 
 export type CodexMappedResult =
@@ -37,6 +37,18 @@ export function mapCodexNotification(
   if (notification.method === 'turn/diff/updated') {
     const diff = typeof params?.diff === 'string' ? params.diff : ''
     if (diffDeletesWholeFile(diff)) {
+      cb.onError?.(deletionBlockMessage())
+      return {
+        blocked: true,
+        threadId: String(params?.threadId ?? ''),
+        turnId: String(params?.turnId ?? ''),
+      }
+    }
+  }
+
+  if (notification.method === 'item/started') {
+    const item = params?.item as Record<string, unknown> | undefined
+    if (item?.type === 'commandExecution' && typeof item.command === 'string' && isDeletionCommand(item.command)) {
       cb.onError?.(deletionBlockMessage())
       return {
         blocked: true,

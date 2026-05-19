@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deletionBlockMessage, diffDeletesWholeFile, isDeletionCommand } from '../electron/agent/codex-guard'
+import { blocksClientRequest, deletionBlockMessage, diffDeletesWholeFile, isDeletionCommand } from '../electron/agent/codex-guard'
 
 describe('codex guard', () => {
   it('blocks common deletion shell commands', () => {
@@ -40,5 +40,18 @@ describe('codex guard', () => {
 
   it('uses the approved user-facing block message', () => {
     expect(deletionBlockMessage()).toBe('这个操作会删除整个文件，我先停住了。')
+  })
+
+  it('blocks app-server fs/remove client requests', () => {
+    expect(blocksClientRequest('fs/remove', { path: 'C:\\repo\\important.txt' })).toBe(true)
+  })
+
+  it('blocks app-server command/exec client requests with deletion commands', () => {
+    expect(blocksClientRequest('command/exec', { command: ['powershell', '-Command', 'Remove-Item .\\important.txt'] })).toBe(true)
+  })
+
+  it('allows app-server client requests that are not destructive', () => {
+    expect(blocksClientRequest('thread/start', { cwd: 'C:\\repo' })).toBe(false)
+    expect(blocksClientRequest('command/exec', { command: ['npm', 'test'] })).toBe(false)
   })
 })

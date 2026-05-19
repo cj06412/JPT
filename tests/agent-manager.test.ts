@@ -68,4 +68,18 @@ describe('AgentManager', () => {
     expect(codex.setWorkdir).toHaveBeenCalledWith('C:\\next', '')
     expect(claude.clear).not.toHaveBeenCalled()
   })
+
+  it('surfaces backend startup failures instead of dropping the send promise', async () => {
+    const codex = fakeBackend('codex')
+    const claude = fakeBackend('claude')
+    vi.mocked(codex.start).mockRejectedValueOnce(new Error('Codex not logged in'))
+    const onError = vi.fn()
+    const manager = new AgentManager(() => 'codex', { codex, claude })
+    manager.setCallbacks({ onError })
+
+    manager.send('hello')
+
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('Codex not logged in'))
+    expect(codex.send).not.toHaveBeenCalled()
+  })
 })

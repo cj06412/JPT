@@ -37,4 +37,19 @@ describe('mapCodexNotification', () => {
     expect(result).toEqual({ blocked: true, threadId: 't1', turnId: 'turn1' })
     expect(cb.onError).toHaveBeenCalledWith('这个操作会删除整个文件，我先停住了。')
   })
+
+  it('blocks deletion shell commands as soon as command execution starts', () => {
+    const cb = callbacks()
+    const result = mapCodexNotification({
+      method: 'item/started',
+      params: {
+        threadId: 't1',
+        turnId: 'turn1',
+        item: { type: 'commandExecution', command: 'Remove-Item .\\important.txt' },
+      },
+    }, cb)
+
+    expect(result).toEqual({ blocked: true, threadId: 't1', turnId: 'turn1' })
+    expect(cb.onError).toHaveBeenCalledWith('这个操作会删除整个文件，我先停住了。')
+  })
 })

@@ -52,9 +52,13 @@ export class AgentManager implements AgentSession {
   }
 
   private async sendAsync(message: string): Promise<void> {
-    const backend = this.active()
-    if (!backend.isRunning()) await backend.start()
-    backend.send(message)
+    try {
+      const backend = this.active()
+      if (!backend.isRunning()) await backend.start()
+      backend.send(message)
+    } catch (e) {
+      this.cb.onError?.(e instanceof Error ? e.message : String(e))
+    }
   }
 
   private active(): AgentSession {

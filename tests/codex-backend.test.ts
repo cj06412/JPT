@@ -3,10 +3,12 @@ import { CodexBackend, type CodexAppServerLike } from '../electron/agent/codex'
 
 type FakeCodexClient = CodexAppServerLike & {
   emit: (notification: { method: string; params?: unknown }) => void
+  emitExit: () => void
 }
 
 function fakeClient(): FakeCodexClient {
   let listener: (notification: { method: string; params?: unknown }) => void = () => {}
+  let exitListener: () => void = () => {}
   const client = {
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn(),
@@ -15,7 +17,9 @@ function fakeClient(): FakeCodexClient {
     turnStart: vi.fn().mockResolvedValue('turn-1'),
     turnInterrupt: vi.fn().mockResolvedValue(undefined),
     onNotification: vi.fn((nextListener) => { listener = nextListener }),
+    onExit: vi.fn((nextListener) => { exitListener = nextListener }),
     emit: (notification: { method: string; params?: unknown }) => listener(notification),
+    emitExit: () => exitListener(),
   }
   return client
 }
@@ -120,5 +124,25 @@ describe('CodexBackend', () => {
 
     expect(client.turnInterrupt).toHaveBeenCalledWith('thread-1', 'turn-1')
     expect(backend.isBusy()).toBe(false)
+  })
+
+  it('marks itself stopped when the app-server exits and restarts on the next send', async () => {
+    const client = fakeClient()
+    const backend = new CodexBackend(client, {
+      workdir: 'C:\\repo',
+      threadId: '',
+      idleTimeoutMs: 20 * 60_000,
+      saveThreadId: vi.fn(),
+    })
+
+    await backend.start()
+    client.emitExit()
+
+    expect(backend.isRunning()).toBe(false)
+
+    backend.send('hello again')
+
+    expect(client.start).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(client.turnStart).toHaveBeenCalledWith('thread-1', 'hello again'))
   })
 })

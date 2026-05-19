@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import type { ChildProcess } from 'node:child_process'
 import { CodexJsonRpcPeer } from './codex-jsonrpc'
+import { blocksClientRequest, deletionBlockMessage } from './codex-guard'
 import { resolveCodexPath } from './shell-env'
 import type { CodexAppServerLike } from './codex'
 import type { JsonValue, ThreadResumeResponse, ThreadStartResponse, TurnStartResponse } from './codex-protocol'
@@ -58,11 +59,13 @@ export class CodexAppServerClient implements CodexAppServerLike {
       this.peer?.rejectAll('Codex app-server exited')
       this.proc = null
       this.peer = null
+      this.emitter.emit('exit')
     })
     proc.on('error', (err) => {
       this.peer?.rejectAll(err.message)
       this.proc = null
       this.peer = null
+      this.emitter.emit('exit')
     })
 
     await this.request('initialize', {
@@ -107,8 +110,13 @@ export class CodexAppServerClient implements CodexAppServerLike {
     this.emitter.on('notification', listener)
   }
 
+  onExit(listener: () => void): void {
+    this.emitter.on('exit', listener)
+  }
+
   private request<T>(method: string, params: JsonValue): Promise<T> {
     if (!this.peer) return Promise.reject(new Error('Codex app-server is not running'))
+    if (blocksClientRequest(method, params)) return Promise.reject(new Error(deletionBlockMessage()))
     return this.peer.request<T>(method, params)
   }
 
