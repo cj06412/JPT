@@ -29,7 +29,7 @@ describe('ConfigStore', () => {
     expect(snap.soundsEnabled).toBe(true)
     expect(snap.launchAtStartup).toBe(true)
     expect(snap.proactiveMessages).toBe(false)
-    expect(snap.agentBackend).toBe('codex')
+    expect(snap.agentBackend).toBe('claude')
     expect(snap.codexWorkdir).toBe('')
     expect(snap.codexIdleTimeoutMs).toBe(20 * 60_000)
     expect(snap.codexNoDeleteFiles).toBe(true)

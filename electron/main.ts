@@ -33,7 +33,12 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 // Strip it globally so framed windows (welcome, settings) don't show the menubar.
 Menu.setApplicationMenu(null)
 
-const rawStore = new Store<ConfigSnapshot>()
+// clearInvalidConfig: a corrupt/unparseable config.json (crashed write,
+// concurrent writers, force-kill mid-write) must NOT brick the app — conf
+// rethrows the JSON SyntaxError at construction otherwise, which crashes the
+// whole main process with no recovery (fatal for a non-technical recipient).
+// With this, an invalid config silently resets to defaults.
+const rawStore = new Store<ConfigSnapshot>({ clearInvalidConfig: true })
 const configStore = new ConfigStore(rawStore)
 
 let windows: JPTWindows | null = null

@@ -25,7 +25,7 @@ export const DEFAULT_CONFIG: ConfigSnapshot = {
   // empty means "use placeholder persona from workdir.ts"; user can edit via settings window
   personaDoc: '',
   proactiveMessages: false,
-  agentBackend: 'codex',
+  agentBackend: 'claude',
   codexWorkdir: '',
   codexIdleTimeoutMs: 20 * 60_000,
   codexNoDeleteFiles: true,
